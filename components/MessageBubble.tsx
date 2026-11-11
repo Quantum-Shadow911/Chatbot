@@ -1,0 +1,177 @@
+"use client";
+
+import { memo, useEffect, useRef, useState } from "react";
+import type { Message } from "@/lib/types";
+import { formatTime } from "@/lib/utils";
+import { CopyButton } from "./CopyButton";
+import { Markdown } from "./Markdown";
+import { TypingIndicator } from "./TypingIndicator";
+import { AlertIcon, BotIcon, EditIcon, RefreshIcon } from "./icons";
+
+interface MessageBubbleProps {
+  message: Message;
+  isStreaming: boolean;
+  isLastAssistant: boolean;
+  canRegenerate: boolean;
+  onRegenerate: () => void;
+  onEdit: (id: string) => void;
+  onCancelEdit: () => void;
+  onEditResend: (id: string, content: string) => boolean;
+}
+
+function MessageBubbleImpl({
+  message,
+  isStreaming,
+  isLastAssistant,
+  canRegenerate,
+  onRegenerate,
+  onEdit,
+  onCancelEdit,
+  onEditResend,
+}: MessageBubbleProps) {
+  const isUser = message.role === "user";
+  const isEditing = isUser && message.id === "__editing__";
+  const [draft, setDraft] = useState(message.content);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      setDraft(message.content);
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    }
+  }, [isEditing, message.content]);
+
+  if (isEditing) {
+    return (
+      <div className="message-row message-row-user">
+        <div className="flex w-full max-w-[85%] flex-col items-end sm:max-w-[75%]">
+          <div className="w-full rounded-2xl border border-indigo-400/40 bg-slate-900 p-3">
+            <label htmlFor="edit-message" className="sr-only">
+              Edit your message
+            </label>
+            <textarea
+              id="edit-message"
+              ref={textareaRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (draft.trim()) onEditResend(message.id, draft);
+                }
+                if (e.key === "Escape") onCancelEdit();
+              }}
+              rows={Math.min(8, draft.split("\n").length + 1)}
+              className="w-full resize-none bg-transparent text-sm text-slate-100 outline-none"
+            />
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onCancelEdit}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => draft.trim() && onEditResend(message.id, draft)}
+                disabled={!draft.trim()}
+                className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Save &amp; resend
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`message-row ${isUser ? "message-row-user" : "message-row-assistant"}`}>
+      {!isUser && (
+        <div
+          className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm"
+          aria-hidden
+        >
+          <BotIcon width={15} height={15} />
+        </div>
+      )}
+      <div
+        className={`flex min-w-0 max-w-[85%] flex-col sm:max-w-[75%] ${
+          isUser ? "items-end" : "items-start"
+        }`}
+      >
+        <div
+          className={
+            isUser
+              ? "rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-md shadow-indigo-950/40"
+              : message.error
+                ? "flex items-start gap-2 rounded-2xl rounded-tl-md border border-red-500/30 bg-red-950/40 px-4 py-2.5 text-sm leading-relaxed text-red-200"
+                : "rounded-2xl rounded-tl-md border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm leading-relaxed text-slate-100 shadow-md shadow-slate-950/30"
+          }
+        >
+          {message.error ? (
+            <>
+              <AlertIcon width={16} height={16} className="mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="font-medium">Could not generate a response</p>
+                <p className="mt-0.5 text-red-300/90">{message.content}</p>
+                {canRegenerate && (
+                  <button
+                    type="button"
+                    onClick={onRegenerate}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 px-2.5 py-1 text-xs font-medium text-red-200 hover:bg-red-500/10"
+                  >
+                    <RefreshIcon width={13} height={13} /> Try again
+                  </button>
+                )}
+              </div>
+            </>
+          ) : isUser ? (
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          ) : message.content === "" && isStreaming ? (
+            <TypingIndicator />
+          ) : (
+            <Markdown content={message.content} />
+          )}
+        </div>
+        <div className={`mt-1 flex items-center gap-1 px-1 ${isUser ? "flex-row-reverse" : ""}`}>
+          <time
+            dateTime={new Date(message.createdAt).toISOString()}
+            className="text-[11px] text-slate-500"
+          >
+            {formatTime(message.createdAt)}
+          </time>
+          {!isUser && !message.error && message.content !== "" && (
+            <CopyButton text={message.content} label="" className="!px-1.5" />
+          )}
+          {isUser && !isStreaming && (
+            <button
+              type="button"
+              onClick={() => onEdit(message.id)}
+              aria-label="Edit and resend message"
+              title="Edit and resend"
+              className="rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
+            >
+              <EditIcon width={13} height={13} />
+            </button>
+          )}
+          {isLastAssistant && !isStreaming && !message.error && canRegenerate && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              aria-label="Regenerate response"
+              title="Regenerate response"
+              className="rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
+            >
+              <RefreshIcon width={13} height={13} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const MessageBubble = memo(MessageBubbleImpl);
