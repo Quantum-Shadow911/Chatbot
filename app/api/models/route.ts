@@ -11,7 +11,7 @@ const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const NON_CHAT_PATTERN =
-  /(whisper|tts|guard|embed|speech|playai|distil|bge|rerank|moderation|safety)/i;
+  /(whisper|tts|guard|embed|speech|playai|distil|bge|rerank|moderation|safety|orpheus|kokoro|piper|voice)/i;
 
 let cache: { at: number; models: string[] } | null = null;
 
