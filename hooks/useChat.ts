@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import type { Conversation, Message, Role } from "@/lib/types";
+import type {
+  ChatRequestMessage,
+  Conversation,
+  Message,
+  Role,
+} from "@/lib/types";
+import { formatBytes } from "@/lib/attachments";
 import {
   loadActiveConversationId,
   loadConversations,
@@ -9,6 +15,12 @@ import {
   saveConversations,
 } from "@/lib/storage";
 import { generateId, titleFromContent } from "@/lib/utils";
+
+interface UseChatOptions {
+  getMemories?: () => string[];
+  getModel?: () => string | null;
+  onMemoriesExtracted?: (facts: string[]) => void;
+}
 
 type Status = "idle" | "loading" | "streaming";
 
@@ -33,10 +45,96 @@ type Action =
   | { type: "END_STREAM" }
   | { type: "TRUNCATE_AFTER"; conversationId: string; messageId: string }
   | { type: "UPDATE_MESSAGE"; conversationId: string; messageId: string; content: string }
-  | { type: "DELETE_MESSAGE"; conversationId: string; messageId: string };
+  | { type: "DELETE_MESSAGE"; conversationId: string; messageId: string }
+  | { type: "DELETE_ALL" };
+
+function buildTextWithAttachments(message: Message): string {
+  const parts: string[] = [];
+  if (message.content.trim().length > 0) parts.push(message.content);
+  for (const attachment of message.attachments ?? []) {
+    if (attachment.kind === "text" && attachment.text) {
+      parts.push(`[Attached file: ${attachment.name}]\n${attachment.text}`);
+    } else if (attachment.kind !== "image") {
+      parts.push(
+        `[Attached file: ${attachment.name} (${attachment.mime || "unknown type"}, ${formatBytes(attachment.size)}) — binary content not included]`
+      );
+    }
+  }
+  return parts.join("\n\n") || "(The user attached files.)";
+}
+
+function buildApiMessages(history: Message[]): ChatRequestMessage[] {
+  return history
+    .filter(
+      (m) =>
+        !m.error &&
+        (m.role === "user" ||
+          m.content.trim().length > 0 ||
+          (m.attachments ?? []).length > 0)
+    )
+    .map((message) => {
+      const images = (message.attachments ?? []).filter(
+        (a) => a.kind === "image" && a.dataUrl
+      );
+      const text = buildTextWithAttachments(message);
+      if (images.length === 0) return { role: message.role, content: text };
+      return {
+        role: message.role,
+        content: [
+          { type: "text" as const, text },
+          ...images.map((attachment) => ({
+            type: "image_url" as const,
+            image_url: { url: attachment.dataUrl as string },
+          })),
+        ],
+      };
+    });
+}
 
 function touch(conversation: Conversation): Conversation {
   return { ...conversation, updatedAt: Date.now() };
+}
+
+async function extractMemories(
+  history: Message[],
+  assistantContent: string,
+  options: UseChatOptions
+): Promise<void> {
+  const onExtracted = options.onMemoriesExtracted;
+  if (!onExtracted) return;
+  const transcript = [
+    ...history
+      .filter(
+        (m) =>
+          !m.error &&
+          (m.content.trim().length > 0 || (m.attachments ?? []).length > 0)
+      )
+      .slice(-10)
+      .map((m) => ({
+        role: m.role,
+        content: buildTextWithAttachments(m).slice(0, 8_000),
+      })),
+    { role: "assistant" as const, content: assistantContent.slice(0, 8_000) },
+  ];
+  try {
+    const response = await fetch("/api/memory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: transcript,
+        known: options.getMemories?.() ?? [],
+      }),
+    });
+    if (!response.ok) return;
+    const data: unknown = await response.json();
+    if (typeof data !== "object" || data === null) return;
+    const memories = (data as Record<string, unknown>).memories;
+    if (Array.isArray(memories) && memories.length > 0) {
+      onExtracted(memories.filter((m): m is string => typeof m === "string"));
+    }
+  } catch {
+    // Memory extraction is best-effort; ignore failures.
+  }
 }
 
 function mapConversation(
@@ -127,6 +225,8 @@ function reducer(state: ChatState, action: Action): ChatState {
       return mapConversation(state, action.conversationId, (c) =>
         touch({ ...c, messages: c.messages.filter((m) => m.id !== action.messageId) })
       );
+    case "DELETE_ALL":
+      return { ...state, conversations: [], activeId: null };
     default:
       return state;
   }
@@ -148,7 +248,7 @@ async function parseErrorMessage(response: Response): Promise<string> {
   return "Something went wrong while generating a response. Please try again.";
 }
 
-export function useChat() {
+export function useChat(options: UseChatOptions = {}) {
   const [state, dispatch] = useReducer(reducer, {
     conversations: [],
     activeId: null,
@@ -158,6 +258,8 @@ export function useChat() {
   });
 
   const abortRef = useRef<AbortController | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -202,15 +304,17 @@ export function useChat() {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const payload = history
-        .filter((m) => !m.error && m.content.trim().length > 0)
-        .map((m) => ({ role: m.role, content: m.content }));
+      const payload = buildApiMessages(history);
 
       try {
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: payload }),
+          body: JSON.stringify({
+            messages: payload,
+            memories: optionsRef.current.getMemories?.() ?? [],
+            model: optionsRef.current.getModel?.() ?? null,
+          }),
           signal: controller.signal,
         });
 
@@ -241,6 +345,7 @@ export function useChat() {
         const reader = body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let assistantContent = "";
 
         const handleEvent = (data: string) => {
           if (data === "[DONE]") return;
@@ -260,6 +365,7 @@ export function useChat() {
               ) {
                 const delta = (choice as { delta: Record<string, unknown> }).delta;
                 if (typeof delta.content === "string" && delta.content.length > 0) {
+                  assistantContent += delta.content;
                   dispatch({
                     type: "APPEND_DELTA",
                     conversationId,
@@ -291,6 +397,9 @@ export function useChat() {
         if (rest.startsWith("data:")) handleEvent(rest.slice(5).trim());
 
         dispatch({ type: "END_STREAM" });
+        if (assistantContent.trim().length > 0) {
+          void extractMemories(history, assistantContent, optionsRef.current);
+        }
       } catch (error) {
         dispatch({ type: "END_STREAM" });
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -311,16 +420,18 @@ export function useChat() {
   );
 
   const sendMessage = useCallback(
-    (content: string) => {
+    (content: string, attachments?: Message["attachments"]) => {
       const trimmed = content.trim();
       const current = stateRef.current;
       const conversationId = current.activeId;
-      if (!trimmed || !conversationId || current.status !== "idle") return;
+      const hasAttachments = Boolean(attachments && attachments.length > 0);
+      if ((!trimmed && !hasAttachments) || !conversationId || current.status !== "idle") return;
       const message: Message = {
         id: generateId(),
         role: "user" as Role,
         content: trimmed,
         createdAt: Date.now(),
+        ...(hasAttachments ? { attachments } : {}),
       };
       const conversation = stateRef.current.conversations.find(
         (c) => c.id === conversationId
@@ -390,6 +501,10 @@ export function useChat() {
     dispatch({ type: "DELETE", id });
   }, []);
 
+  const deleteAllConversations = useCallback(() => {
+    dispatch({ type: "DELETE_ALL" });
+  }, []);
+
   const stopGeneration = useCallback(() => {
     abortRef.current?.abort();
   }, []);
@@ -404,6 +519,7 @@ export function useChat() {
     selectConversation,
     renameConversation,
     deleteConversation,
+    deleteAllConversations,
     stopGeneration,
   };
 }
