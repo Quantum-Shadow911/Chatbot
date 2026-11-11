@@ -50,9 +50,31 @@ npm start
 
 | Variable           | Default                  | Purpose                                    |
 | ------------------ | ------------------------ | ------------------------------------------ |
-| `MISTRAL_API_KEY`  | — (required)             | Server-side Mistral API key                |
-| `MISTRAL_API_URL`  | `https://api.mistral.ai` | API base URL (useful for proxies/testing)  |
+| `MISTRAL_API_KEY`  | — (required)             | Server-side API key for your provider      |
+| `MISTRAL_API_URL`  | `https://api.mistral.ai` | API base URL of your provider              |
 | `MISTRAL_MODEL`    | `mistral-small-latest`   | Chat model to use                          |
+
+### Using a different provider
+
+The chat API route speaks the standard OpenAI-compatible format, so any
+OpenAI-compatible provider works without code changes:
+
+```bash
+# Groq (free tier) — https://console.groq.com/keys
+MISTRAL_API_KEY=gsk_your_groq_key
+MISTRAL_API_URL=https://api.groq.com/openai/v1
+MISTRAL_MODEL=openai/gpt-oss-20b
+
+# Local Ollama — https://ollama.com
+MISTRAL_API_KEY=ollama
+MISTRAL_API_URL=http://localhost:11434/v1
+MISTRAL_MODEL=llama3.2
+```
+
+Model names change over time as providers retire old models — if you get a
+"model not found" style error, check your provider's current model list.
+The app surfaces the provider's real error message in the chat to make this
+easy to diagnose.
 
 ## Project structure
 

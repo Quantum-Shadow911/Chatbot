@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const API_URL = process.env.MISTRAL_API_URL ?? "https://api.mistral.ai";
+const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
+  .trim()
+  .replace(/\/+$/, "")
+  .replace(/\/v1$/, "");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
 const MAX_MESSAGES = 100;
 const MAX_CONTENT_LENGTH = 32_000;
@@ -36,6 +39,27 @@ function parseMessages(raw: unknown): IncomingMessage[] | null {
 
 function errorResponse(status: number, message: string) {
   return NextResponse.json({ error: message }, { status });
+}
+
+function extractDetail(data: unknown): string {
+  if (typeof data !== "object" || data === null) return "";
+  const obj = data as Record<string, unknown>;
+  const candidates: unknown[] = [obj.message, obj.detail];
+  if (typeof obj.error === "object" && obj.error !== null) {
+    candidates.push((obj.error as Record<string, unknown>).message);
+  } else if (typeof obj.error === "string") {
+    candidates.push(obj.error);
+  }
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+    if (Array.isArray(candidate)) {
+      const joined = candidate.map(String).join(" ").trim();
+      if (joined.length > 0) return joined;
+    }
+  }
+  return "";
 }
 
 export async function POST(request: NextRequest) {
@@ -88,18 +112,7 @@ export async function POST(request: NextRequest) {
     let detail = "";
     try {
       const data: unknown = await upstream.json();
-      if (
-        typeof data === "object" &&
-        data !== null &&
-        Array.isArray((data as Record<string, unknown>).message)
-      ) {
-        detail = (data as { message: unknown[] }).message
-          .map(String)
-          .join(" ");
-      } else if (typeof data === "object" && data !== null) {
-        const msg = (data as Record<string, unknown>).message;
-        if (typeof msg === "string") detail = msg;
-      }
+      detail = extractDetail(data);
     } catch {
       // Keep the generic message.
     }
