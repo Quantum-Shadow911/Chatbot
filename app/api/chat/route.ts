@@ -8,19 +8,12 @@ const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
   .replace(/\/+$/, "")
   .replace(/\/v1$/, "");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
-
-function availableModels(): string[] {
-  const extra = (process.env.MISTRAL_MODELS ?? "")
-    .split(",")
-    .map((model) => model.trim())
-    .filter((model) => model.length > 0 && model.length <= 100);
-  return Array.from(new Set([MODEL, ...extra]));
-}
+const MODEL_PATTERN = /^[A-Za-z0-9._:/-]{1,100}$/;
 
 function parseModel(raw: unknown): string {
   if (typeof raw !== "string") return MODEL;
-  const model = raw.trim().slice(0, 100);
-  return availableModels().includes(model) ? model : MODEL;
+  const model = raw.trim();
+  return MODEL_PATTERN.test(model) ? model : MODEL;
 }
 const MAX_MESSAGES = 100;
 const MAX_CONTENT_LENGTH = 32_000;
