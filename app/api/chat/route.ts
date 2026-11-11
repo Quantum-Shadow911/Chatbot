@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const API_URL = process.env.MISTRAL_API_URL ?? "https://api.mistral.ai";
+const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
+  .trim()
+  .replace(/\/+$/, "")
+  .replace(/\/v1$/, "");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
 const MAX_MESSAGES = 100;
 const MAX_CONTENT_LENGTH = 32_000;
