@@ -38,6 +38,27 @@ function errorResponse(status: number, message: string) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function extractDetail(data: unknown): string {
+  if (typeof data !== "object" || data === null) return "";
+  const obj = data as Record<string, unknown>;
+  const candidates: unknown[] = [obj.message, obj.detail];
+  if (typeof obj.error === "object" && obj.error !== null) {
+    candidates.push((obj.error as Record<string, unknown>).message);
+  } else if (typeof obj.error === "string") {
+    candidates.push(obj.error);
+  }
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+    if (Array.isArray(candidate)) {
+      const joined = candidate.map(String).join(" ").trim();
+      if (joined.length > 0) return joined;
+    }
+  }
+  return "";
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) {
@@ -88,18 +109,7 @@ export async function POST(request: NextRequest) {
     let detail = "";
     try {
       const data: unknown = await upstream.json();
-      if (
-        typeof data === "object" &&
-        data !== null &&
-        Array.isArray((data as Record<string, unknown>).message)
-      ) {
-        detail = (data as { message: unknown[] }).message
-          .map(String)
-          .join(" ");
-      } else if (typeof data === "object" && data !== null) {
-        const msg = (data as Record<string, unknown>).message;
-        if (typeof msg === "string") detail = msg;
-      }
+      detail = extractDetail(data);
     } catch {
       // Keep the generic message.
     }
