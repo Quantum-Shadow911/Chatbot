@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import type { Conversation, Message, Role } from "@/lib/types";
+import type {
+  ChatRequestMessage,
+  Conversation,
+  Message,
+  Role,
+} from "@/lib/types";
+import { formatBytes } from "@/lib/attachments";
 import {
   loadActiveConversationId,
   loadConversations,
@@ -34,6 +40,49 @@ type Action =
   | { type: "TRUNCATE_AFTER"; conversationId: string; messageId: string }
   | { type: "UPDATE_MESSAGE"; conversationId: string; messageId: string; content: string }
   | { type: "DELETE_MESSAGE"; conversationId: string; messageId: string };
+
+function buildTextWithAttachments(message: Message): string {
+  const parts: string[] = [];
+  if (message.content.trim().length > 0) parts.push(message.content);
+  for (const attachment of message.attachments ?? []) {
+    if (attachment.kind === "text" && attachment.text) {
+      parts.push(`[Attached file: ${attachment.name}]\n${attachment.text}`);
+    } else if (attachment.kind !== "image") {
+      parts.push(
+        `[Attached file: ${attachment.name} (${attachment.mime || "unknown type"}, ${formatBytes(attachment.size)}) — binary content not included]`
+      );
+    }
+  }
+  return parts.join("\n\n") || "(The user attached files.)";
+}
+
+function buildApiMessages(history: Message[]): ChatRequestMessage[] {
+  return history
+    .filter(
+      (m) =>
+        !m.error &&
+        (m.role === "user" ||
+          m.content.trim().length > 0 ||
+          (m.attachments ?? []).length > 0)
+    )
+    .map((message) => {
+      const images = (message.attachments ?? []).filter(
+        (a) => a.kind === "image" && a.dataUrl
+      );
+      const text = buildTextWithAttachments(message);
+      if (images.length === 0) return { role: message.role, content: text };
+      return {
+        role: message.role,
+        content: [
+          { type: "text" as const, text },
+          ...images.map((attachment) => ({
+            type: "image_url" as const,
+            image_url: { url: attachment.dataUrl as string },
+          })),
+        ],
+      };
+    });
+}
 
 function touch(conversation: Conversation): Conversation {
   return { ...conversation, updatedAt: Date.now() };
@@ -202,9 +251,7 @@ export function useChat() {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const payload = history
-        .filter((m) => !m.error && m.content.trim().length > 0)
-        .map((m) => ({ role: m.role, content: m.content }));
+      const payload = buildApiMessages(history);
 
       try {
         const response = await fetch("/api/chat", {
@@ -311,16 +358,18 @@ export function useChat() {
   );
 
   const sendMessage = useCallback(
-    (content: string) => {
+    (content: string, attachments?: Message["attachments"]) => {
       const trimmed = content.trim();
       const current = stateRef.current;
       const conversationId = current.activeId;
-      if (!trimmed || !conversationId || current.status !== "idle") return;
+      const hasAttachments = Boolean(attachments && attachments.length > 0);
+      if ((!trimmed && !hasAttachments) || !conversationId || current.status !== "idle") return;
       const message: Message = {
         id: generateId(),
         role: "user" as Role,
         content: trimmed,
         createdAt: Date.now(),
+        ...(hasAttachments ? { attachments } : {}),
       };
       const conversation = stateRef.current.conversations.find(
         (c) => c.id === conversationId

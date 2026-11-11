@@ -1,7 +1,90 @@
 @import "tailwindcss";
 
+/*
+ * Theme foundation. Every slate/indigo/violet/red utility in the components
+ * resolves to one of the semantic variables below, so switching theme mode or
+ * accent color only requires updating variables on <html>.
+ *
+ * Dark is the default (:root); html.light overrides the surface/text ramp.
+ * Accent variables are set from JS (lib/theme.ts) and default to indigo here.
+ */
+
 :root {
   color-scheme: dark;
+
+  --c-bg: #020617;
+  --c-panel: #0f172a;
+  --c-surface: #1e293b;
+  --c-surface-strong: #334155;
+  --c-surface-hover: #475569;
+  --c-text: #f1f5f9;
+  --c-text-soft: #cbd5e1;
+  --c-muted: #94a3b8;
+  --c-faint: #64748b;
+  --c-border: rgba(148, 163, 184, 0.16);
+  --c-overlay: rgba(2, 6, 23, 0.7);
+
+  --c-error-bg: #450a0a;
+  --c-error-text: #fecaca;
+
+  --accent: #6366f1;
+  --accent-strong: #4f46e5;
+  --accent-soft: #818cf8;
+  --accent-text: #a5b4fc;
+  --accent-deep: #1e1b4b;
+  --accent-border: rgba(129, 140, 248, 0.4);
+  --accent-badge-bg: rgba(99, 102, 241, 0.12);
+}
+
+html.light {
+  color-scheme: light;
+
+  --c-bg: #f8fafc;
+  --c-panel: #ffffff;
+  --c-surface: #f1f5f9;
+  --c-surface-strong: #e2e8f0;
+  --c-surface-hover: #cbd5e1;
+  --c-text: #0f172a;
+  --c-text-soft: #334155;
+  --c-muted: #64748b;
+  --c-faint: #94a3b8;
+  --c-border: rgba(15, 23, 42, 0.12);
+  --c-overlay: rgba(15, 23, 42, 0.4);
+
+  --c-error-bg: #fef2f2;
+  --c-error-text: #b91c1c;
+
+  --accent-deep: #c7d2fe;
+  --accent-border: rgba(99, 102, 241, 0.45);
+  --accent-badge-bg: rgba(99, 102, 241, 0.1);
+}
+
+/* Remap Tailwind palette tokens to the semantic variables. */
+@theme inline {
+  --color-slate-950: var(--c-bg);
+  --color-slate-900: var(--c-panel);
+  --color-slate-800: var(--c-surface);
+  --color-slate-700: var(--c-surface-strong);
+  --color-slate-600: var(--c-surface-hover);
+  --color-slate-100: var(--c-text);
+  --color-slate-200: var(--c-text);
+  --color-slate-300: var(--c-text-soft);
+  --color-slate-400: var(--c-muted);
+  --color-slate-500: var(--c-faint);
+
+  --color-indigo-200: var(--accent-text);
+  --color-indigo-300: var(--accent-text);
+  --color-indigo-400: var(--accent-soft);
+  --color-indigo-500: var(--accent);
+  --color-indigo-600: var(--accent-strong);
+  --color-indigo-950: var(--accent-deep);
+
+  --color-violet-500: var(--accent);
+  --color-violet-600: var(--accent-strong);
+
+  --color-red-200: var(--c-error-text);
+  --color-red-300: var(--c-error-text);
+  --color-red-950: var(--c-error-bg);
 }
 
 html,
@@ -10,8 +93,13 @@ body {
 }
 
 body {
-  background-color: #020617;
-  color: #f1f5f9;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+}
+
+/* Focus outlines follow the accent color everywhere. */
+:focus-visible {
+  outline-color: var(--accent-soft);
 }
 
 @keyframes typing-bounce {
@@ -32,7 +120,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background-color: #818cf8;
+  background-color: var(--accent-soft);
   animation: typing-bounce 1.2s ease-in-out infinite;
 }
 
@@ -126,16 +214,16 @@ body {
 }
 
 .md-content a {
-  color: #a5b4fc;
+  color: var(--accent-text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .md-content blockquote {
   margin: 0.5rem 0;
-  border-left: 3px solid #6366f1;
+  border-left: 3px solid var(--accent);
   padding-left: 0.75rem;
-  color: #cbd5e1;
+  color: var(--c-text-soft);
 }
 
 .md-content code:not(pre code) {
@@ -149,7 +237,7 @@ body {
   margin: 0.6rem 0;
   overflow-x: auto;
   border-radius: 0.65rem;
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  border: 1px solid var(--c-border);
   background-color: #0b1120;
   padding: 0.85rem 1rem;
   font-size: 0.8rem;
@@ -170,7 +258,7 @@ body {
 
 .md-content th,
 .md-content td {
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--c-border);
   padding: 0.4rem 0.6rem;
   text-align: left;
 }
@@ -182,5 +270,5 @@ body {
 
 .md-content hr {
   margin: 0.8rem 0;
-  border-color: rgba(148, 163, 184, 0.2);
+  border-color: var(--c-border);
 }

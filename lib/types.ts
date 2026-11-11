@@ -1,11 +1,24 @@
 export type Role = "user" | "assistant";
 
+export type AttachmentKind = "image" | "text" | "file";
+
+export interface Attachment {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  kind: AttachmentKind;
+  dataUrl?: string;
+  text?: string;
+}
+
 export interface Message {
   id: string;
   role: Role;
   content: string;
   createdAt: number;
   error?: boolean;
+  attachments?: Attachment[];
 }
 
 export interface Conversation {
@@ -16,6 +29,15 @@ export interface Conversation {
   updatedAt: number;
 }
 
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export interface ChatRequestMessage {
+  role: Role;
+  content: string | ContentPart[];
+}
+
 export interface ChatRequest {
-  messages: { role: Role; content: string }[];
+  messages: ChatRequestMessage[];
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
-import type { Message } from "@/lib/types";
+import type { Attachment, Message } from "@/lib/types";
+import { formatBytes } from "@/lib/attachments";
 import { formatTime } from "@/lib/utils";
 import { CopyButton } from "./CopyButton";
 import { Markdown } from "./Markdown";
 import { TypingIndicator } from "./TypingIndicator";
-import { AlertIcon, BotIcon, EditIcon, RefreshIcon } from "./icons";
+import { AlertIcon, BotIcon, EditIcon, FileIcon, ImageIcon, RefreshIcon } from "./icons";
 
 interface MessageBubbleProps {
   message: Message;
@@ -17,6 +18,53 @@ interface MessageBubbleProps {
   onEdit: (id: string) => void;
   onCancelEdit: () => void;
   onEditResend: (id: string, content: string) => boolean;
+}
+
+function AttachmentList({ attachments, isUser }: { attachments: Attachment[]; isUser: boolean }) {
+  if (attachments.length === 0) return null;
+  const images = attachments.filter((a) => a.kind === "image" && a.dataUrl);
+  const others = attachments.filter((a) => !(a.kind === "image" && a.dataUrl));
+  return (
+    <div className="mb-2 flex flex-col gap-2">
+      {images.length > 0 && (
+        <div className={`flex flex-wrap gap-2 ${isUser ? "justify-end" : ""}`}>
+          {images.map((attachment) => (
+            <a
+              key={attachment.id}
+              href={attachment.dataUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-xl border border-white/20"
+            >
+              <img
+                src={attachment.dataUrl}
+                alt={attachment.name}
+                className="max-h-56 max-w-[220px] object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      {others.length > 0 && (
+        <ul className={`flex flex-wrap gap-2 ${isUser ? "justify-end" : ""}`}>
+          {others.map((attachment) => (
+            <li
+              key={attachment.id}
+              className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/20 px-2 py-1 text-xs text-slate-200"
+            >
+              {attachment.kind === "text" ? (
+                <FileIcon width={13} height={13} className="shrink-0" />
+              ) : (
+                <ImageIcon width={13} height={13} className="shrink-0" />
+              )}
+              <span className="max-w-[180px] truncate">{attachment.name}</span>
+              <span className="text-slate-400">{formatBytes(attachment.size)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function MessageBubbleImpl({
@@ -111,6 +159,9 @@ function MessageBubbleImpl({
                 : "rounded-2xl rounded-tl-md border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm leading-relaxed text-slate-100 shadow-md shadow-slate-950/30"
           }
         >
+          {!message.error && (message.attachments?.length ?? 0) > 0 && (
+            <AttachmentList attachments={message.attachments ?? []} isUser={isUser} />
+          )}
           {message.error ? (
             <>
               <AlertIcon width={16} height={16} className="mt-0.5 shrink-0" />
