@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useChat } from "@/hooks/useChat";
+import { useSettings } from "@/hooks/useSettings";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { SettingsModal } from "./SettingsModal";
 import { Sidebar } from "./Sidebar";
-import { BotIcon, MenuIcon } from "./icons";
+import { BotIcon, MenuIcon, SettingsIcon } from "./icons";
 
 export function ChatApp() {
   const chat = useChat();
+  const { settings, setTheme, setAccent } = useSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (sidebarOpen) {
@@ -61,6 +65,17 @@ export function ChatApp() {
               Generating…
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Open settings"
+            title="Settings"
+            className={`shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400 ${
+              busy ? "" : "ml-auto"
+            }`}
+          >
+            <SettingsIcon width={18} height={18} />
+          </button>
         </header>
 
         {messages.length === 0 ? (
@@ -72,7 +87,8 @@ export function ChatApp() {
               <h2 className="text-xl font-semibold text-slate-100">How can I help you today?</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-400">
                 Ask anything — the assistant remembers the conversation, so you can ask
-                follow-up questions without repeating context.
+                follow-up questions without repeating context. You can also attach images
+                and files.
               </p>
             </div>
           </div>
@@ -88,6 +104,15 @@ export function ChatApp() {
 
         <Composer busy={busy} onSend={chat.sendMessage} onStop={chat.stopGeneration} />
       </div>
+
+      {settingsOpen && (
+        <SettingsModal
+          settings={settings}
+          onThemeChange={setTheme}
+          onAccentChange={setAccent}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }
