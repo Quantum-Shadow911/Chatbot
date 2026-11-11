@@ -101,3 +101,5 @@ lib/
   storage.ts           # localStorage load/save with validation
   utils.ts             # IDs, date formatting, title generation
 ```
+
+Includes a favicon served from `app/icon.svg`.
