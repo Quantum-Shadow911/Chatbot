@@ -39,5 +39,9 @@ export function useSettings() {
     setSettings((current) => ({ ...current, memoryEnabled }));
   }, []);
 
-  return { settings, hydrated, setTheme, setAccent, setMemoryEnabled };
+  const setModel = useCallback((model: string | null) => {
+    setSettings((current) => ({ ...current, model }));
+  }, []);
+
+  return { settings, hydrated, setTheme, setAccent, setMemoryEnabled, setModel };
 }

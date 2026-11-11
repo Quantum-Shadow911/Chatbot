@@ -18,6 +18,7 @@ import { generateId, titleFromContent } from "@/lib/utils";
 
 interface UseChatOptions {
   getMemories?: () => string[];
+  getModel?: () => string | null;
   onMemoriesExtracted?: (facts: string[]) => void;
 }
 
@@ -44,7 +45,8 @@ type Action =
   | { type: "END_STREAM" }
   | { type: "TRUNCATE_AFTER"; conversationId: string; messageId: string }
   | { type: "UPDATE_MESSAGE"; conversationId: string; messageId: string; content: string }
-  | { type: "DELETE_MESSAGE"; conversationId: string; messageId: string };
+  | { type: "DELETE_MESSAGE"; conversationId: string; messageId: string }
+  | { type: "DELETE_ALL" };
 
 function buildTextWithAttachments(message: Message): string {
   const parts: string[] = [];
@@ -223,6 +225,8 @@ function reducer(state: ChatState, action: Action): ChatState {
       return mapConversation(state, action.conversationId, (c) =>
         touch({ ...c, messages: c.messages.filter((m) => m.id !== action.messageId) })
       );
+    case "DELETE_ALL":
+      return { ...state, conversations: [], activeId: null };
     default:
       return state;
   }
@@ -309,6 +313,7 @@ export function useChat(options: UseChatOptions = {}) {
           body: JSON.stringify({
             messages: payload,
             memories: optionsRef.current.getMemories?.() ?? [],
+            model: optionsRef.current.getModel?.() ?? null,
           }),
           signal: controller.signal,
         });
@@ -496,6 +501,10 @@ export function useChat(options: UseChatOptions = {}) {
     dispatch({ type: "DELETE", id });
   }, []);
 
+  const deleteAllConversations = useCallback(() => {
+    dispatch({ type: "DELETE_ALL" });
+  }, []);
+
   const stopGeneration = useCallback(() => {
     abortRef.current?.abort();
   }, []);
@@ -510,6 +519,7 @@ export function useChat(options: UseChatOptions = {}) {
     selectConversation,
     renameConversation,
     deleteConversation,
+    deleteAllConversations,
     stopGeneration,
   };
 }

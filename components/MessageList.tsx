@@ -76,6 +76,7 @@ export function MessageList({
               message={message}
               isStreaming={status !== "idle"}
               isLastAssistant={message.id === lastAssistantId}
+              isEditing={editingId === message.id}
               canRegenerate={canRegenerate}
               onRegenerate={onRegenerate}
               onEdit={setEditingId}

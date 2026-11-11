@@ -4,12 +4,14 @@ export interface Settings {
   theme: ThemeMode;
   accent: string | null;
   memoryEnabled: boolean;
+  model: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   accent: null,
   memoryEnabled: true,
+  model: null,
 };
 export const DEFAULT_ACCENT = "#6366f1";
 
@@ -53,6 +55,12 @@ export function normalizeSettings(value: unknown): Settings {
       typeof raw.memoryEnabled === "boolean"
         ? raw.memoryEnabled
         : DEFAULT_SETTINGS.memoryEnabled,
+    model:
+      typeof raw.model === "string" &&
+      raw.model.trim().length > 0 &&
+      raw.model.length <= 100
+        ? raw.model.trim()
+        : null,
   };
 }
 

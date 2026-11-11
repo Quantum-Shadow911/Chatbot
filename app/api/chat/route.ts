@@ -8,6 +8,20 @@ const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
   .replace(/\/+$/, "")
   .replace(/\/v1$/, "");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
+
+function availableModels(): string[] {
+  const extra = (process.env.MISTRAL_MODELS ?? "")
+    .split(",")
+    .map((model) => model.trim())
+    .filter((model) => model.length > 0 && model.length <= 100);
+  return Array.from(new Set([MODEL, ...extra]));
+}
+
+function parseModel(raw: unknown): string {
+  if (typeof raw !== "string") return MODEL;
+  const model = raw.trim().slice(0, 100);
+  return availableModels().includes(model) ? model : MODEL;
+}
 const MAX_MESSAGES = 100;
 const MAX_CONTENT_LENGTH = 32_000;
 const MAX_PARTS = 8;
@@ -170,6 +184,11 @@ export async function POST(request: NextRequest) {
       ? (body as Record<string, unknown>).memories
       : undefined
   );
+  const model = parseModel(
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>).model
+      : undefined
+  );
 
   let upstream: Response;
   try {
@@ -180,7 +199,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         messages: [
           { role: "system", content: buildSystemMessage(memories) },
           ...messages,

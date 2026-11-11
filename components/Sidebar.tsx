@@ -28,13 +28,24 @@ export function Sidebar({
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (editingId) requestAnimationFrame(() => inputRef.current?.select());
   }, [editingId]);
 
-  const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+  const normalizedQuery = query.trim().toLowerCase();
+  const sorted = [...conversations]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .filter(
+      (conversation) =>
+        normalizedQuery.length === 0 ||
+        conversation.title.toLowerCase().includes(normalizedQuery) ||
+        conversation.messages.some((message) =>
+          message.content.toLowerCase().includes(normalizedQuery)
+        )
+    );
 
   const commitRename = (id: string) => {
     onRename(id, draft);
@@ -87,10 +98,26 @@ export function Sidebar({
           </button>
         </div>
 
+        <div className="px-3 pb-1">
+          <label htmlFor="conversation-search" className="sr-only">
+            Search conversations
+          </label>
+          <input
+            id="conversation-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search chats…"
+            className="w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 outline-none transition-colors focus:border-indigo-400/60"
+          />
+        </div>
+
         <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-4" aria-label="Conversations">
           {sorted.length === 0 ? (
             <p className="px-3 py-6 text-center text-xs text-slate-500">
-              No conversations yet. Start a new chat to begin.
+              {normalizedQuery.length > 0
+                ? "No conversations match your search."
+                : "No conversations yet. Start a new chat to begin."}
             </p>
           ) : (
             <ul className="flex flex-col gap-1">

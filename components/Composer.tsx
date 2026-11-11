@@ -150,8 +150,7 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
             onClick={() => fileInputRef.current?.click()}
             aria-label="Attach files"
             title="Attach images or files"
-            disabled={busy}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l-2xl text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400 disabled:opacity-60"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l-2xl text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
           >
             <PaperclipIcon width={17} height={17} />
           </button>
@@ -179,7 +178,6 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
             onPaste={handlePaste}
             placeholder={busy ? "AI is responding…" : "Send a message…"}
             rows={1}
-            disabled={busy}
             aria-describedby="chat-input-hint"
             className="max-h-[200px] min-h-[44px] w-full resize-none bg-transparent py-3 pr-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none disabled:opacity-60"
           />

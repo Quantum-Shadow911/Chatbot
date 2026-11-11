@@ -13,6 +13,7 @@ interface MessageBubbleProps {
   message: Message;
   isStreaming: boolean;
   isLastAssistant: boolean;
+  isEditing: boolean;
   canRegenerate: boolean;
   onRegenerate: () => void;
   onEdit: (id: string) => void;
@@ -71,6 +72,7 @@ function MessageBubbleImpl({
   message,
   isStreaming,
   isLastAssistant,
+  isEditing,
   canRegenerate,
   onRegenerate,
   onEdit,
@@ -78,18 +80,18 @@ function MessageBubbleImpl({
   onEditResend,
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
-  const isEditing = isUser && message.id === "__editing__";
+  const editing = isUser && isEditing;
   const [draft, setDraft] = useState(message.content);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    if (isEditing) {
+    if (editing) {
       setDraft(message.content);
       requestAnimationFrame(() => textareaRef.current?.focus());
     }
   }, [isEditing, message.content]);
 
-  if (isEditing) {
+  if (editing) {
     return (
       <div className="message-row message-row-user">
         <div className="flex w-full max-w-[85%] flex-col items-end sm:max-w-[75%]">

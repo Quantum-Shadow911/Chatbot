@@ -6,19 +6,45 @@ import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { ModelPicker } from "./ModelPicker";
 import { SettingsModal } from "./SettingsModal";
 import { Sidebar } from "./Sidebar";
 import { BotIcon, MenuIcon, SettingsIcon, SparklesIcon } from "./icons";
 
+const SUGGESTIONS: { title: string; prompt: string }[] = [
+  {
+    title: "Explain something",
+    prompt: "Explain how neural networks learn, in simple terms",
+  },
+  {
+    title: "Help me write",
+    prompt: "Help me write a friendly email asking my teacher for a deadline extension",
+  },
+  {
+    title: "Make a plan",
+    prompt: "Help me plan a productive weekend with time for exercise and rest",
+  },
+  {
+    title: "Debug with me",
+    prompt: "I have a bug in my code. Ask me questions to help me figure it out.",
+  },
+];
+
+interface AvailableModels {
+  models: string[];
+  default: string;
+}
+
 export function ChatApp() {
   const { memories, addMemories, removeMemory, clearMemories } = useMemory();
-  const { settings, setTheme, setAccent, setMemoryEnabled } = useSettings();
+  const { settings, setTheme, setAccent, setMemoryEnabled, setModel } = useSettings();
   const memoryRef = useRef(memories);
   memoryRef.current = memories;
   const memoryEnabled = settings.memoryEnabled;
   const [memoryNotice, setMemoryNotice] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
 
   const handleMemoriesExtracted = useCallback(
     (facts: string[]) => {
@@ -35,6 +61,7 @@ export function ChatApp() {
 
   const chat = useChat({
     getMemories: () => (memoryEnabled ? memoryRef.current.map((m) => m.text) : []),
+    getModel: () => settings.model,
     onMemoriesExtracted: handleMemoriesExtracted,
   });
 
@@ -45,23 +72,80 @@ export function ChatApp() {
   }, [memoryNotice]);
 
   useEffect(() => {
-    if (sidebarOpen) {
-      const onKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") setSidebarOpen(false);
-      };
-      window.addEventListener("keydown", onKeyDown);
-      return () => window.removeEventListener("keydown", onKeyDown);
-    }
-  }, [sidebarOpen]);
+    let cancelled = false;
+    fetch("/api/models")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: unknown) => {
+        if (cancelled || typeof data !== "object" || data === null) return;
+        const models = (data as Record<string, unknown>).models;
+        const fallback = (data as Record<string, unknown>).default;
+        if (!Array.isArray(models) || models.length === 0) return;
+        setAvailableModels({
+          models: models.filter((m): m is string => typeof m === "string"),
+          default:
+            typeof fallback === "string" ? fallback : (models[0] as string),
+        });
+      })
+      .catch(() => {
+        // Model picker is optional; keep the default when unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (event.shiftKey && key === "o") {
+        event.preventDefault();
+        chat.startNewChat();
+        setSidebarOpen(false);
+      } else if (!event.shiftKey && event.key === ",") {
+        event.preventDefault();
+        setSettingsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chat.startNewChat]);
 
   const handleEditResend = useCallback(
     (id: string, content: string) => chat.editAndResend(id, content),
     [chat]
   );
 
+  const handleExport = useCallback(() => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      conversations: chat.conversations,
+      memories: memoryRef.current.map((m) => m.text),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "ai-chatbot-data.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [chat.conversations]);
+
+  const handleDeleteAll = useCallback(() => {
+    chat.deleteAllConversations();
+    setSidebarOpen(false);
+  }, [chat.deleteAllConversations]);
+
   const conversation = chat.activeConversation;
   const messages = conversation?.messages ?? [];
   const busy = chat.status !== "idle";
+  const models = availableModels?.models ?? [];
+  const currentModel =
+    settings.model && models.includes(settings.model)
+      ? settings.model
+      : (availableModels?.default ?? settings.model ?? "");
 
   return (
     <div className="flex h-dvh overflow-hidden bg-slate-950 text-slate-100">
@@ -89,6 +173,13 @@ export function ChatApp() {
           <h1 className="min-w-0 truncate text-sm font-semibold text-slate-200">
             {conversation ? conversation.title : "AI Chatbot"}
           </h1>
+          {models.length > 1 && currentModel && (
+            <ModelPicker
+              models={models}
+              selected={currentModel}
+              onSelect={setModel}
+            />
+          )}
           {busy && (
             <span className="ml-auto shrink-0 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-medium text-indigo-300">
               Generating…
@@ -100,7 +191,7 @@ export function ChatApp() {
             aria-label="Open settings"
             title="Settings"
             className={`shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400 ${
-              busy ? "" : "ml-auto"
+              busy || models.length > 1 ? "" : "ml-auto"
             }`}
           >
             <SettingsIcon width={18} height={18} />
@@ -109,16 +200,32 @@ export function ChatApp() {
 
         {messages.length === 0 ? (
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6">
-            <div className="flex max-w-md flex-col items-center text-center">
+            <div className="flex max-w-lg flex-col items-center text-center">
               <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-950/50">
                 <BotIcon width={30} height={30} />
               </div>
               <h2 className="text-xl font-semibold text-slate-100">How can I help you today?</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                Ask anything — the assistant remembers the conversation, so you can ask
-                follow-up questions without repeating context. You can also attach images
-                and files.
+                Ask anything — the assistant remembers your conversation and important
+                details across chats. You can also attach images and files.
               </p>
+              <div className="mt-6 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion.title}
+                    type="button"
+                    onClick={() => chat.sendMessage(suggestion.prompt)}
+                    className="rounded-xl border border-white/10 bg-slate-900/80 px-3.5 py-3 text-left transition-colors hover:border-indigo-400/40 hover:bg-slate-800/80 focus-visible:outline-2 focus-visible:outline-indigo-400"
+                  >
+                    <span className="block text-xs font-semibold text-slate-200">
+                      {suggestion.title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] text-slate-500">
+                      {suggestion.prompt}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -132,6 +239,9 @@ export function ChatApp() {
         )}
 
         <Composer busy={busy} onSend={chat.sendMessage} onStop={chat.stopGeneration} />
+        <p className="bg-slate-950 pb-2 text-center text-[11px] text-slate-500">
+          AI can make mistakes. Check important info.
+        </p>
       </div>
 
       {settingsOpen && (
@@ -145,6 +255,12 @@ export function ChatApp() {
             onToggle: setMemoryEnabled,
             onRemove: removeMemory,
             onClear: clearMemories,
+          }}
+          dataControls={{
+            onExport: handleExport,
+            onDeleteAll: handleDeleteAll,
+            canDeleteAll: !busy && chat.conversations.length > 0,
+            conversationCount: chat.conversations.length,
           }}
           onClose={() => setSettingsOpen(false)}
         />
