@@ -3,9 +3,14 @@ export type ThemeMode = "light" | "dark" | "system";
 export interface Settings {
   theme: ThemeMode;
   accent: string | null;
+  memoryEnabled: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: "system", accent: null };
+export const DEFAULT_SETTINGS: Settings = {
+  theme: "system",
+  accent: null,
+  memoryEnabled: true,
+};
 export const DEFAULT_ACCENT = "#6366f1";
 
 export const ACCENT_PRESETS: { name: string; hex: string }[] = [
@@ -44,6 +49,10 @@ export function normalizeSettings(value: unknown): Settings {
   return {
     theme: isValidThemeMode(raw.theme) ? raw.theme : DEFAULT_SETTINGS.theme,
     accent: isValidAccent(raw.accent) ? raw.accent.toLowerCase() : null,
+    memoryEnabled:
+      typeof raw.memoryEnabled === "boolean"
+        ? raw.memoryEnabled
+        : DEFAULT_SETTINGS.memoryEnabled,
   };
 }
 

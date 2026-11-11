@@ -1,19 +1,48 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@/hooks/useChat";
+import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { SettingsModal } from "./SettingsModal";
 import { Sidebar } from "./Sidebar";
-import { BotIcon, MenuIcon, SettingsIcon } from "./icons";
+import { BotIcon, MenuIcon, SettingsIcon, SparklesIcon } from "./icons";
 
 export function ChatApp() {
-  const chat = useChat();
-  const { settings, setTheme, setAccent } = useSettings();
+  const { memories, addMemories, removeMemory, clearMemories } = useMemory();
+  const { settings, setTheme, setAccent, setMemoryEnabled } = useSettings();
+  const memoryRef = useRef(memories);
+  memoryRef.current = memories;
+  const memoryEnabled = settings.memoryEnabled;
+  const [memoryNotice, setMemoryNotice] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const handleMemoriesExtracted = useCallback(
+    (facts: string[]) => {
+      if (!memoryEnabled || facts.length === 0) return;
+      addMemories(facts);
+      setMemoryNotice(
+        facts.length === 1
+          ? `Remembered: ${facts[0]}`
+          : `Remembered ${facts.length} new details`
+      );
+    },
+    [addMemories, memoryEnabled]
+  );
+
+  const chat = useChat({
+    getMemories: () => (memoryEnabled ? memoryRef.current.map((m) => m.text) : []),
+    onMemoriesExtracted: handleMemoriesExtracted,
+  });
+
+  useEffect(() => {
+    if (!memoryNotice) return;
+    const timer = window.setTimeout(() => setMemoryNotice(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [memoryNotice]);
 
   useEffect(() => {
     if (sidebarOpen) {
@@ -110,8 +139,31 @@ export function ChatApp() {
           settings={settings}
           onThemeChange={setTheme}
           onAccentChange={setAccent}
+          memory={{
+            enabled: memoryEnabled,
+            items: memories,
+            onToggle: setMemoryEnabled,
+            onRemove: removeMemory,
+            onClear: clearMemories,
+          }}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
+
+      {memoryNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-24 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium shadow-lg backdrop-blur"
+          style={{
+            backgroundColor: "var(--accent-badge-bg)",
+            borderColor: "var(--accent-border)",
+            color: "var(--accent-text)",
+          }}
+        >
+          <SparklesIcon width={13} height={13} className="shrink-0" />
+          <span className="truncate">{memoryNotice}</span>
+        </div>
       )}
     </div>
   );

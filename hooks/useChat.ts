@@ -16,6 +16,11 @@ import {
 } from "@/lib/storage";
 import { generateId, titleFromContent } from "@/lib/utils";
 
+interface UseChatOptions {
+  getMemories?: () => string[];
+  onMemoriesExtracted?: (facts: string[]) => void;
+}
+
 type Status = "idle" | "loading" | "streaming";
 
 interface ChatState {
@@ -86,6 +91,48 @@ function buildApiMessages(history: Message[]): ChatRequestMessage[] {
 
 function touch(conversation: Conversation): Conversation {
   return { ...conversation, updatedAt: Date.now() };
+}
+
+async function extractMemories(
+  history: Message[],
+  assistantContent: string,
+  options: UseChatOptions
+): Promise<void> {
+  const onExtracted = options.onMemoriesExtracted;
+  if (!onExtracted) return;
+  const transcript = [
+    ...history
+      .filter(
+        (m) =>
+          !m.error &&
+          (m.content.trim().length > 0 || (m.attachments ?? []).length > 0)
+      )
+      .slice(-10)
+      .map((m) => ({
+        role: m.role,
+        content: buildTextWithAttachments(m).slice(0, 8_000),
+      })),
+    { role: "assistant" as const, content: assistantContent.slice(0, 8_000) },
+  ];
+  try {
+    const response = await fetch("/api/memory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: transcript,
+        known: options.getMemories?.() ?? [],
+      }),
+    });
+    if (!response.ok) return;
+    const data: unknown = await response.json();
+    if (typeof data !== "object" || data === null) return;
+    const memories = (data as Record<string, unknown>).memories;
+    if (Array.isArray(memories) && memories.length > 0) {
+      onExtracted(memories.filter((m): m is string => typeof m === "string"));
+    }
+  } catch {
+    // Memory extraction is best-effort; ignore failures.
+  }
 }
 
 function mapConversation(
@@ -197,7 +244,7 @@ async function parseErrorMessage(response: Response): Promise<string> {
   return "Something went wrong while generating a response. Please try again.";
 }
 
-export function useChat() {
+export function useChat(options: UseChatOptions = {}) {
   const [state, dispatch] = useReducer(reducer, {
     conversations: [],
     activeId: null,
@@ -207,6 +254,8 @@ export function useChat() {
   });
 
   const abortRef = useRef<AbortController | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -257,7 +306,10 @@ export function useChat() {
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: payload }),
+          body: JSON.stringify({
+            messages: payload,
+            memories: optionsRef.current.getMemories?.() ?? [],
+          }),
           signal: controller.signal,
         });
 
@@ -288,6 +340,7 @@ export function useChat() {
         const reader = body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let assistantContent = "";
 
         const handleEvent = (data: string) => {
           if (data === "[DONE]") return;
@@ -307,6 +360,7 @@ export function useChat() {
               ) {
                 const delta = (choice as { delta: Record<string, unknown> }).delta;
                 if (typeof delta.content === "string" && delta.content.length > 0) {
+                  assistantContent += delta.content;
                   dispatch({
                     type: "APPEND_DELTA",
                     conversationId,
@@ -338,6 +392,9 @@ export function useChat() {
         if (rest.startsWith("data:")) handleEvent(rest.slice(5).trim());
 
         dispatch({ type: "END_STREAM" });
+        if (assistantContent.trim().length > 0) {
+          void extractMemories(history, assistantContent, optionsRef.current);
+        }
       } catch (error) {
         dispatch({ type: "END_STREAM" });
         if (error instanceof DOMException && error.name === "AbortError") {

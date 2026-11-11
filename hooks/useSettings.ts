@@ -35,5 +35,9 @@ export function useSettings() {
     setSettings((current) => ({ ...current, accent }));
   }, []);
 
-  return { settings, hydrated, setTheme, setAccent };
+  const setMemoryEnabled = useCallback((memoryEnabled: boolean) => {
+    setSettings((current) => ({ ...current, memoryEnabled }));
+  }, []);
+
+  return { settings, hydrated, setTheme, setAccent, setMemoryEnabled };
 }

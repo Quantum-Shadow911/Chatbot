@@ -2,18 +2,30 @@
 
 import { useEffect, useRef } from "react";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, type Settings, type ThemeMode } from "@/lib/theme";
+import type { MemoryItem } from "@/lib/memory";
 import {
   CheckIcon,
   CloseIcon,
   MonitorIcon,
   MoonIcon,
+  SparklesIcon,
   SunIcon,
+  TrashIcon,
 } from "./icons";
+
+interface MemorySettings {
+  enabled: boolean;
+  items: MemoryItem[];
+  onToggle: (enabled: boolean) => void;
+  onRemove: (id: string) => void;
+  onClear: () => void;
+}
 
 interface SettingsModalProps {
   settings: Settings;
   onThemeChange: (theme: ThemeMode) => void;
   onAccentChange: (accent: string | null) => void;
+  memory: MemorySettings;
   onClose: () => void;
 }
 
@@ -27,6 +39,7 @@ export function SettingsModal({
   settings,
   onThemeChange,
   onAccentChange,
+  memory,
   onClose,
 }: SettingsModalProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -158,6 +171,74 @@ export function SettingsModal({
             >
               Reset to default
             </button>
+          )}
+        </section>
+
+        <section className="mt-5" aria-labelledby="settings-memory-label">
+          <h3 id="settings-memory-label" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Memory
+          </h3>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1.5 text-xs text-slate-300">
+              <SparklesIcon width={13} height={13} style={{ color: "var(--accent-text)" }} />
+              Remember details across chats
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={memory.enabled}
+              aria-label="Toggle memory"
+              onClick={() => memory.onToggle(!memory.enabled)}
+              className="relative h-5 w-9 shrink-0 rounded-full border border-white/10 transition-colors"
+              style={{ backgroundColor: memory.enabled ? "var(--accent)" : "rgba(255, 255, 255, 0.12)" }}
+            >
+              <span
+                aria-hidden
+                className="absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-all"
+                style={{ left: memory.enabled ? "1.25rem" : "0.125rem" }}
+              />
+            </button>
+          </div>
+          {memory.enabled && (
+            <div className="mt-3">
+              {memory.items.length === 0 ? (
+                <p className="rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2.5 text-[11px] leading-relaxed text-slate-500">
+                  Nothing saved yet. As you chat, the assistant will remember
+                  important details like your name, preferences, and projects.
+                </p>
+              ) : (
+                <>
+                  <ul className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                    {memory.items.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-start justify-between gap-2 rounded-lg border border-white/10 bg-slate-800/60 px-2.5 py-1.5"
+                      >
+                        <span className="min-w-0 break-words text-[11px] leading-relaxed text-slate-300">
+                          {item.text}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => memory.onRemove(item.id)}
+                          aria-label={`Forget: ${item.text}`}
+                          title="Forget"
+                          className="shrink-0 rounded p-0.5 text-slate-500 hover:bg-white/10 hover:text-slate-200"
+                        >
+                          <TrashIcon width={12} height={12} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={memory.onClear}
+                    className="mt-2 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-white/10"
+                  >
+                    Clear all memories
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </section>
       </div>

@@ -13,6 +13,12 @@ const MAX_CONTENT_LENGTH = 32_000;
 const MAX_PARTS = 8;
 const MAX_IMAGE_PART_LENGTH = 6_000_000;
 const MAX_TOTAL_LENGTH = 14_000_000;
+const MAX_MEMORIES = 50;
+const MAX_MEMORY_LENGTH = 200;
+const MAX_MEMORY_TOTAL = 8_000;
+
+const BASE_SYSTEM_PROMPT =
+  "You are a helpful, friendly AI assistant. Format responses with Markdown when it improves readability.";
 
 type ContentPart =
   | { type: "text"; text: string }
@@ -87,6 +93,28 @@ function parseMessages(raw: unknown): IncomingMessage[] | null {
   return messages;
 }
 
+function parseMemories(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const memories: string[] = [];
+  let total = 0;
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const text = item.trim().slice(0, MAX_MEMORY_LENGTH);
+    if (text.length === 0) continue;
+    total += text.length;
+    if (total > MAX_MEMORY_TOTAL || memories.length >= MAX_MEMORIES) break;
+    memories.push(text);
+  }
+  return memories;
+}
+
+function buildSystemMessage(memories: string[]): string {
+  if (memories.length === 0) return BASE_SYSTEM_PROMPT;
+  return `${BASE_SYSTEM_PROMPT}\n\nLong-term memories about the user, gathered from previous conversations:\n${memories
+    .map((memory) => `- ${memory}`)
+    .join("\n")}\n\nUse these memories naturally when they are relevant. Do not repeat them back unless the user asks.`;
+}
+
 function errorResponse(status: number, message: string) {
   return NextResponse.json({ error: message }, { status });
 }
@@ -137,6 +165,12 @@ export async function POST(request: NextRequest) {
     return errorResponse(400, "Invalid conversation payload.");
   }
 
+  const memories = parseMemories(
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>).memories
+      : undefined
+  );
+
   let upstream: Response;
   try {
     upstream = await fetch(`${API_URL}/v1/chat/completions`, {
@@ -147,7 +181,10 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: MODEL,
-        messages,
+        messages: [
+          { role: "system", content: buildSystemMessage(memories) },
+          ...messages,
+        ],
         stream: true,
       }),
     });

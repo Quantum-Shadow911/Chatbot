@@ -1,5 +1,5 @@
 import type { Attachment, Conversation, Message } from "./types";
-import { normalizeSettings, type Settings } from "./theme";
+import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from "./theme";
 
 const STORAGE_KEY = "ai-chatbot:conversations:v1";
 const ACTIVE_KEY = "ai-chatbot:active:v1";
@@ -117,13 +117,13 @@ export function saveActiveConversationId(id: string | null): void {
 }
 
 export function loadSettings(): Settings {
-  if (typeof window === "undefined") return { theme: "system", accent: null };
+  if (typeof window === "undefined") return { ...DEFAULT_SETTINGS };
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { theme: "system", accent: null };
+    if (!raw) return { ...DEFAULT_SETTINGS };
     return normalizeSettings(JSON.parse(raw));
   } catch {
-    return { theme: "system", accent: null };
+    return { ...DEFAULT_SETTINGS };
   }
 }
 
