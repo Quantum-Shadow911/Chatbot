@@ -4,8 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "@/lib/types";
 import { speak, stopSpeaking } from "@/lib/speech";
 import {
+  createMicMeter,
   createRecognizer,
   speechRecognitionSupported,
+  type MicMeter,
   type Recognizer,
 } from "@/lib/voice";
 import { CloseIcon, MicIcon, SpeakerIcon, SparklesIcon, WaveformIcon } from "./icons";
@@ -23,11 +25,11 @@ const PHASE_UI: Record<Phase, { label: string; hint: string }> = {
   },
   thinking: {
     label: "Thinking",
-    hint: "The AI is working on a reply…",
+    hint: "Talk anytime — I'll catch it.",
   },
   speaking: {
     label: "Speaking",
-    hint: "Tap the orb to jump in, or just wait for it to finish.",
+    hint: "Just start talking to interrupt — or tap the orb.",
   },
 };
 
@@ -63,6 +65,25 @@ export function LiveMode({
   const silenceTimerRef = useRef<number | null>(null);
   const recognizerRef = useRef<Recognizer | null>(null);
   const closeRef = useRef<() => void>(() => {});
+  const orbRef = useRef<HTMLSpanElement | null>(null);
+  const barsRef = useRef<(HTMLSpanElement | null)[]>([]);
+  const meterRef = useRef<MicMeter | null>(null);
+  const speakStartRef = useRef(0);
+  const onLevelRef = useRef<(level: number) => void>(() => {});
+
+  onLevelRef.current = (level: number) => {
+    const orb = orbRef.current;
+    if (orb && phaseRef.current === "listening") {
+      orb.style.transform = `scale(${1 + level * 0.22})`;
+      orb.style.boxShadow = `0 0 ${60 + level * 80}px ${level * 18}px var(--accent), inset 0 2px 20px rgba(255, 255, 255, 0.35)`;
+    }
+    barsRef.current.forEach((bar, index) => {
+      if (!bar || phaseRef.current !== "listening") return;
+      const wave =
+        0.3 + level * (1.4 + 0.35 * Math.sin(Date.now() / 90 + index * 1.3));
+      bar.style.transform = `scaleY(${Math.min(1, wave)})`;
+    });
+  };
 
   statusRef.current = status;
 
@@ -75,15 +96,24 @@ export function LiveMode({
     recognizerRef.current?.start();
   }, []);
 
-  const stopMic = useCallback(() => {
-    recognizerRef.current?.stop();
-  }, []);
-
   const resumeListening = useCallback(() => {
     if (!openRef.current) return;
     applyPhase("listening");
     startMic();
   }, [applyPhase, startMic]);
+
+  useEffect(() => {
+    if (phase === "listening") return;
+    const orb = orbRef.current;
+    if (orb) {
+      orb.style.transform = "";
+      orb.style.boxShadow =
+        "0 0 90px -10px var(--accent), inset 0 2px 20px rgba(255, 255, 255, 0.35)";
+    }
+    barsRef.current.forEach((bar) => {
+      if (bar) bar.style.transform = "";
+    });
+  }, [phase]);
 
   const flushRef = useRef<() => void>(() => {});
 
@@ -112,18 +142,25 @@ export function LiveMode({
     const recognizer = createRecognizer({
       onFinal: (text) => handleFinalRef.current(text),
       onInterim: (text) => {
-        if (openRef.current) setInterim(text);
+        if (openRef.current && phaseRef.current !== "speaking") setInterim(text);
       },
       onError: (message) => {
         if (openRef.current) setError(message);
       },
     });
     recognizerRef.current = recognizer;
+    recognizer.start();
+
+    const meter = createMicMeter((level) => onLevelRef.current(level));
+    meterRef.current = meter;
+    if (meter) void meter.start();
 
     return () => {
       openRef.current = false;
       recognizer.stop();
       recognizerRef.current = null;
+      meterRef.current?.stop();
+      meterRef.current = null;
       if (silenceTimerRef.current !== null) {
         window.clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
@@ -135,7 +172,12 @@ export function LiveMode({
 
   useEffect(() => {
     handleFinalRef.current = (text: string) => {
-      if (!openRef.current || phaseRef.current === "speaking") return;
+      if (!openRef.current) return;
+      if (phaseRef.current === "speaking") {
+        if (Date.now() - speakStartRef.current < 800) return;
+        stopSpeaking();
+        applyPhase("listening");
+      }
       pendingRef.current = `${pendingRef.current} ${text}`.trim();
       setInterim("");
       setHeard(pendingRef.current);
@@ -163,13 +205,12 @@ export function LiveMode({
       setInterim("");
       onSend(text);
     };
-  }, [onSend]);
+  }, [onSend, applyPhase]);
 
   useEffect(() => {
     if (!open || status === "idle") return;
-    stopMic();
     applyPhase("thinking");
-  }, [open, status, stopMic, applyPhase]);
+  }, [open, status, applyPhase]);
 
   useEffect(() => {
     if (!open || status !== "idle") return;
@@ -182,7 +223,7 @@ export function LiveMode({
     ) {
       spokenIdRef.current = last.id;
       applyPhase("speaking");
-      stopMic();
+      speakStartRef.current = Date.now();
       const started = speak(last.content, {
         naturalVoice,
         onEnd: resumeListening,
@@ -193,15 +234,7 @@ export function LiveMode({
     if (phaseRef.current === "speaking") return;
     applyPhase("listening");
     startMic();
-  }, [
-    open,
-    status,
-    lastAssistant,
-    applyPhase,
-    resumeListening,
-    startMic,
-    stopMic,
-  ]);
+  }, [open, status, lastAssistant, applyPhase, resumeListening, startMic]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -217,6 +250,7 @@ export function LiveMode({
       if (event.key !== "Escape") return;
       if (phaseRef.current === "speaking") {
         stopSpeaking();
+        applyPhase("listening");
         return;
       }
       event.preventDefault();
@@ -224,7 +258,7 @@ export function LiveMode({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+  }, [open, applyPhase]);
 
   if (!open) return null;
 
@@ -235,6 +269,7 @@ export function LiveMode({
   const handleOrbClick = () => {
     if (phase === "speaking") {
       stopSpeaking();
+      applyPhase("listening");
     } else if (phase === "listening" && error) {
       setError(null);
       startMic();
@@ -351,11 +386,16 @@ export function LiveMode({
               </>
             )}
             <span
-              className="live-orb absolute inset-8 rounded-full"
+              ref={orbRef}
+              className={`absolute inset-8 rounded-full ${
+                phase === "listening" ? "" : "live-orb"
+              }`}
               style={{
                 background: "linear-gradient(140deg, var(--accent-soft), var(--accent))",
                 boxShadow:
                   "0 0 90px -10px var(--accent), inset 0 2px 20px rgba(255, 255, 255, 0.35)",
+                willChange: "transform",
+                transition: "transform 90ms ease-out, box-shadow 120ms ease-out",
               }}
             />
             <OrbIcon
@@ -366,17 +406,25 @@ export function LiveMode({
           </button>
 
           <div className="flex h-10 items-center gap-1.5" aria-hidden>
-            {[0, 1, 2, 3, 4, 5, 6].map((bar) => (
+            {[0, 1, 2, 3, 4, 5, 6].map((bar, index) => (
               <span
                 key={bar}
-                className={`live-bar w-1.5 rounded-full ${
-                  phase === "thinking" ? "opacity-25" : "opacity-90"
-                }`}
+                ref={(el) => {
+                  barsRef.current[index] = el;
+                }}
+                className={`w-1.5 rounded-full ${
+                  phase === "listening" ? "" : "live-bar"
+                } ${phase === "thinking" ? "opacity-25" : "opacity-90"}`}
                 style={{
+                  height: "2.5rem",
+                  transformOrigin: "center",
+                  transform: phase === "listening" ? "scaleY(0.3)" : undefined,
                   background:
                     "linear-gradient(180deg, var(--accent-soft), var(--accent))",
                   animationDelay: `${bar * 0.13}s`,
                   animationDuration: phase === "speaking" ? "0.7s" : "1.1s",
+                  willChange: "transform",
+                  transition: "transform 90ms ease-out",
                 }}
               />
             ))}
