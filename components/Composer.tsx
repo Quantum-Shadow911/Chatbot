@@ -2,9 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatBytes, processFiles } from "@/lib/attachments";
+import { unlockAudioPlayback } from "@/lib/speech";
 import type { Attachment } from "@/lib/types";
-import { speechRecognitionSupported } from "@/lib/voice";
-import { CloseIcon, FileIcon, MicIcon, PaperclipIcon, SendIcon, StopIcon } from "./icons";
+import {
+  createRecognizer,
+  speechRecognitionSupported,
+  type Recognizer,
+} from "@/lib/voice";
+import {
+  CloseIcon,
+  FileIcon,
+  MicIcon,
+  PaperclipIcon,
+  SendIcon,
+  StopIcon,
+  WaveformIcon,
+} from "./icons";
 
 interface ComposerProps {
   busy: boolean;
@@ -29,10 +42,52 @@ export function Composer({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dragDepthRef = useRef(0);
   const [micAvailable, setMicAvailable] = useState(false);
+  const [dictating, setDictating] = useState(false);
+  const dictationRef = useRef<Recognizer | null>(null);
+  const dictBaseRef = useRef("");
 
   useEffect(() => {
     setMicAvailable(speechRecognitionSupported());
   }, []);
+
+  useEffect(() => () => dictationRef.current?.stop(), []);
+
+  const stopDictation = useCallback(() => {
+    dictationRef.current?.stop();
+    dictationRef.current = null;
+    setDictating(false);
+  }, []);
+
+  const toggleDictation = useCallback(() => {
+    unlockAudioPlayback();
+    if (dictating) {
+      stopDictation();
+      return;
+    }
+    if (!speechRecognitionSupported()) {
+      setFileError("Voice typing needs Chrome, Edge, or Safari.");
+      return;
+    }
+    dictBaseRef.current = value;
+    setDictating(true);
+    const recognizer = createRecognizer({
+      onFinal: (text) => {
+        dictBaseRef.current = `${dictBaseRef.current} ${text}`.trim();
+        setValue(dictBaseRef.current);
+      },
+      onInterim: (text) => {
+        setValue(
+          text ? `${dictBaseRef.current} ${text}`.trim() : dictBaseRef.current
+        );
+      },
+      onError: (message) => {
+        setFileError(message);
+        stopDictation();
+      },
+    });
+    dictationRef.current = recognizer;
+    recognizer.start();
+  }, [dictating, stopDictation, value]);
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -62,11 +117,12 @@ export function Composer({
     const trimmed = value.trim();
     if ((!trimmed && attachments.length === 0) || busy) return;
     onSend(trimmed, attachments.length > 0 ? attachments : undefined);
+    stopDictation();
     setValue("");
     setAttachments([]);
     setFileError(null);
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [value, attachments, busy, onSend]);
+  }, [value, attachments, busy, onSend, stopDictation]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -226,15 +282,36 @@ export function Composer({
       <div className="mx-auto mt-2 flex max-w-3xl items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           {micAvailable && (
-            <button
-              type="button"
-              onClick={onOpenLive}
-              aria-label="Start live voice conversation"
-              title="Live voice mode"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
-            >
-              <MicIcon width={15} height={15} />
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={toggleDictation}
+                aria-label={dictating ? "Stop voice typing" : "Type with your voice"}
+                aria-pressed={dictating}
+                title={dictating ? "Stop voice typing" : "Voice typing — paste what you say into the box"}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-indigo-400 ${
+                  dictating
+                    ? "animate-pulse text-[var(--accent-text)]"
+                    : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
+                }`}
+                style={
+                  dictating
+                    ? { backgroundColor: "var(--accent-badge-bg)" }
+                    : undefined
+                }
+              >
+                <MicIcon width={15} height={15} />
+              </button>
+              <button
+                type="button"
+                onClick={onOpenLive}
+                aria-label="Start live voice conversation"
+                title="Live voice mode"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
+              >
+                <WaveformIcon width={15} height={15} />
+              </button>
+            </>
           )}
           <p id="chat-input-hint" className="truncate text-[11px] text-slate-500">
             Enter to send · Shift + Enter for a new line

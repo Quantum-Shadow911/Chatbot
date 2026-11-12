@@ -8,7 +8,7 @@ import {
   speechRecognitionSupported,
   type Recognizer,
 } from "@/lib/voice";
-import { CloseIcon, MicIcon, SpeakerIcon, SparklesIcon } from "./icons";
+import { CloseIcon, MicIcon, SpeakerIcon, SparklesIcon, WaveformIcon } from "./icons";
 
 type Phase = "listening" | "thinking" | "speaking";
 type ChatStatus = "idle" | "loading" | "streaming";
@@ -257,7 +257,7 @@ export function LiveMode({
               color: "var(--accent-text)",
             }}
           >
-            <MicIcon width={15} height={15} />
+            <WaveformIcon width={15} height={15} />
           </span>
           <h2 className="text-sm font-semibold text-slate-200">Live voice</h2>
         </div>
