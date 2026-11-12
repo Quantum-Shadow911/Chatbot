@@ -454,6 +454,16 @@ export function useChat(options: UseChatOptions = {}) {
         if (rest.startsWith("data:")) handleEvent(rest.slice(5).trim());
 
         dispatch({ type: "END_STREAM" });
+        if (assistantContent.trim().length === 0 && assistantReasoning.trim().length > 0) {
+          dispatch({
+            type: "SET_MESSAGE_ERROR",
+            conversationId,
+            messageId: assistantId,
+            error:
+              "The model spent its entire thinking budget and ran out of room before writing an answer. Try again, or ask a more focused question.",
+          });
+          return;
+        }
         if (assistantContent.trim().length > 0) {
           void extractMemories(history, assistantContent, optionsRef.current);
           const conversation = stateRef.current.conversations.find(
