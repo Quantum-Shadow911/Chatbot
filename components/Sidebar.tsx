@@ -91,7 +91,7 @@ export function Sidebar({
               onNewChat();
               onClose();
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-950/50 transition-all hover:from-indigo-400 hover:to-violet-500 focus-visible:outline-2 focus-visible:outline-indigo-400"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_4px_20px_-6px_var(--accent)] transition-all hover:-translate-y-px hover:from-indigo-400 hover:to-violet-500 active:translate-y-0 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-indigo-400"
           >
             <PlusIcon width={16} height={16} />
             New chat
@@ -108,7 +108,7 @@ export function Sidebar({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search chats…"
-            className="w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 outline-none transition-colors focus:border-indigo-400/60"
+            className="w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 outline-none transition-all focus:border-indigo-400/60 focus:shadow-[0_0_0_3px_var(--accent-badge-bg)]"
           />
         </div>
 
@@ -141,7 +141,12 @@ export function Sidebar({
                       />
                     ) : (
                       <div
-                        className={`group flex items-center gap-1 rounded-lg px-1 transition-colors ${
+                        style={
+                          isActive
+                            ? { boxShadow: "inset 2px 0 0 0 var(--accent)" }
+                            : undefined
+                        }
+                        className={`group flex items-center gap-1 rounded-lg px-1 transition-all hover:translate-x-0.5 ${
                           isActive
                             ? "bg-indigo-500/15 ring-1 ring-inset ring-indigo-400/30"
                             : "hover:bg-white/5"

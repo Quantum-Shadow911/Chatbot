@@ -57,7 +57,7 @@ export function ModelPicker({ models, selected, onSelect }: ModelPickerProps) {
         <ul
           role="listbox"
           aria-label="Available models"
-          className="absolute left-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-white/10 bg-slate-800 py-1 shadow-xl"
+          className="animate-drop-in absolute left-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-white/10 bg-slate-800 py-1 shadow-xl"
         >
           {models.map((model) => {
             const active = model === selected;

@@ -91,7 +91,7 @@ export function MessageList({
           type="button"
           onClick={() => scrollToBottom()}
           aria-label="Scroll to latest message"
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-slate-800/90 p-2 text-slate-300 shadow-lg backdrop-blur transition-colors hover:bg-slate-700"
+          className="animate-pop-in absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-slate-800/90 p-2 text-slate-300 shadow-lg backdrop-blur transition-all hover:scale-110 hover:bg-slate-700 active:scale-95"
         >
           <ArrowDownIcon width={16} height={16} />
         </button>
