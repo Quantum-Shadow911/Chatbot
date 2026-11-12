@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { detectModeId, getMode, isModeId } from "@/lib/modes";
 import { supportsVision } from "@/lib/vision";
 
 export const runtime = "nodejs";
@@ -128,11 +129,29 @@ function parseMemories(raw: unknown): string[] {
   return memories;
 }
 
-function buildSystemMessage(memories: string[]): string {
-  if (memories.length === 0) return BASE_SYSTEM_PROMPT;
-  return `${BASE_SYSTEM_PROMPT}\n\nLong-term memories about the user, gathered from previous conversations:\n${memories
-    .map((memory) => `- ${memory}`)
-    .join("\n")}\n\nUse these memories naturally when they are relevant. Do not repeat them back unless the user asks.`;
+function lastUserText(messages: IncomingMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message.role !== "user") continue;
+    if (typeof message.content === "string") return message.content;
+    return message.content
+      .map((part) => (part.type === "text" ? part.text : ""))
+      .join(" ");
+  }
+  return "";
+}
+
+function buildSystemMessage(memories: string[], modePrompt: string): string {
+  const parts = [BASE_SYSTEM_PROMPT];
+  if (modePrompt) parts.push(modePrompt);
+  if (memories.length > 0) {
+    parts.push(
+      `Long-term memories about the user, gathered from previous conversations:\n${memories
+        .map((memory) => `- ${memory}`)
+        .join("\n")}\n\nUse these memories naturally when they are relevant. Do not repeat them back unless the user asks.`
+    );
+  }
+  return parts.join("\n\n");
 }
 
 function errorResponse(status: number, message: string) {
@@ -195,6 +214,16 @@ export async function POST(request: NextRequest) {
       ? (body as Record<string, unknown>).model
       : undefined
   );
+  const requestedMode =
+    typeof body === "object" && body !== null &&
+    typeof (body as Record<string, unknown>).mode === "string"
+      ? ((body as Record<string, unknown>).mode as string).slice(0, 32)
+      : "auto";
+  const mode = getMode(isModeId(requestedMode) ? requestedMode : "auto");
+  const modePrompt =
+    mode.id === "auto"
+      ? getMode(detectModeId(lastUserText(messages))).prompt
+      : mode.prompt;
 
   let upstream: Response;
   const hasImages = messages.some(
@@ -225,7 +254,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: targetModel,
         messages: [
-          { role: "system", content: buildSystemMessage(memories) },
+          { role: "system", content: buildSystemMessage(memories, modePrompt) },
           ...messages,
         ],
         stream: true,
