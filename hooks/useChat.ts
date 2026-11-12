@@ -19,6 +19,7 @@ import { generateId, titleFromContent } from "@/lib/utils";
 interface UseChatOptions {
   getMemories?: () => string[];
   getModel?: () => string | null;
+  getMode?: () => string | null;
   onMemoriesExtracted?: (facts: string[]) => void;
 }
 
@@ -345,6 +346,7 @@ export function useChat(options: UseChatOptions = {}) {
             messages: payload,
             memories: optionsRef.current.getMemories?.() ?? [],
             model: optionsRef.current.getModel?.() ?? null,
+            mode: optionsRef.current.getMode?.() ?? null,
           }),
           signal: controller.signal,
         });

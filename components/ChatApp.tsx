@@ -9,6 +9,7 @@ import { supportsVision } from "@/lib/vision";
 import type { AuthProviderInfo, Message, SessionInfo } from "@/lib/types";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { ModePicker } from "./ModePicker";
 import { ModelPicker } from "./ModelPicker";
 import { SettingsModal } from "./SettingsModal";
 import { Sidebar } from "./Sidebar";
@@ -50,6 +51,7 @@ export function ChatApp() {
     setReadAloud,
     setVoice,
     setVoiceRate,
+    setChatMode,
   } = useSettings();
   const memoryRef = useRef(memories);
   memoryRef.current = memories;
@@ -112,6 +114,7 @@ export function ChatApp() {
   const chat = useChat({
     getMemories: () => (memoryEnabled ? memoryRef.current.map((m) => m.text) : []),
     getModel: () => settings.model,
+    getMode: () => settings.mode,
     onMemoriesExtracted: handleMemoriesExtracted,
   });
 
@@ -296,6 +299,7 @@ export function ChatApp() {
           <h1 className="min-w-0 truncate text-sm font-semibold text-slate-200">
             {conversation ? conversation.title : "AI Chatbot"}
           </h1>
+          <ModePicker selected={settings.mode} onSelect={setChatMode} />
           {models.length > 1 && currentModel && (
             <ModelPicker
               models={models}

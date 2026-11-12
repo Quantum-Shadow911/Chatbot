@@ -55,6 +55,10 @@ export function useSettings() {
     setSettings((current) => ({ ...current, voiceRate }));
   }, []);
 
+  const setChatMode = useCallback((mode: string | null) => {
+    setSettings((current) => ({ ...current, mode }));
+  }, []);
+
   return {
     settings,
     hydrated,
@@ -65,5 +69,6 @@ export function useSettings() {
     setReadAloud,
     setVoice,
     setVoiceRate,
+    setChatMode,
   };
 }

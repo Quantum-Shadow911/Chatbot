@@ -1,5 +1,7 @@
 export type ThemeMode = "light" | "dark" | "system";
 
+import { isModeId } from "@/lib/modes";
+
 export interface Settings {
   theme: ThemeMode;
   accent: string | null;
@@ -8,6 +10,7 @@ export interface Settings {
   readAloud: boolean;
   voice: string | null;
   voiceRate: number;
+  mode: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readAloud: false,
   voice: null,
   voiceRate: 1,
+  mode: null,
 };
 export const DEFAULT_ACCENT = "#6366f1";
 
@@ -83,6 +87,7 @@ export function normalizeSettings(value: unknown): Settings {
       raw.voiceRate <= 2
         ? raw.voiceRate
         : DEFAULT_SETTINGS.voiceRate,
+    mode: isModeId(raw.mode) ? raw.mode : null,
   };
 }
 
