@@ -88,6 +88,7 @@ export function SettingsModal({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [natural, setNatural] = useState<NaturalTtsInfo>({
     available: false,
+    groqReady: false,
     voices: [],
     default: null,
   });
@@ -331,8 +332,22 @@ export function SettingsModal({
                     ))}
                   </select>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    Lifelike voices that sound like a real person. Used for live
-                    mode and read-aloud.
+                    Lifelike voices used for live mode and read-aloud.
+                    {!natural.groqReady && (
+                      <>
+                        {" "}Right now one built-in Google voice is used for all
+                        of them —{" "}
+                        <a
+                          href="https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-slate-600 underline-offset-2 hover:text-slate-200"
+                        >
+                          accept the Groq voice terms
+                        </a>{" "}
+                        to unlock six distinct voices.
+                      </>
+                    )}
                   </p>
                   <button
                     type="button"
@@ -348,16 +363,8 @@ export function SettingsModal({
                 </div>
               ) : (
                 <p className="mt-4 rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2.5 text-xs leading-relaxed text-slate-400">
-                  Natural voices aren’t set up yet. Open the{" "}
-                  <a
-                    href="https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline decoration-slate-600 underline-offset-2 hover:text-slate-200"
-                  >
-                    Groq console
-                  </a>{" "}
-                  and accept the voice model terms — then reload this page.
+                  Speech isn’t available right now. Reload the page and try
+                  again.
                 </p>
               )}
             </section>

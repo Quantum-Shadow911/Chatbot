@@ -5,6 +5,7 @@ export interface NaturalVoice {
 
 export interface NaturalTtsInfo {
   available: boolean;
+  groqReady: boolean;
   voices: NaturalVoice[];
   default: string | null;
 }
@@ -38,11 +39,11 @@ export function naturalTtsInfo(): Promise<NaturalTtsInfo> {
       .then((response) =>
         response.ok
           ? response.json()
-          : { available: false, voices: [], default: null }
+          : { available: false, groqReady: false, voices: [], default: null }
       )
       .catch(() => {
         neuralInfoPromise = null;
-        return { available: false, voices: [], default: null };
+        return { available: false, groqReady: false, voices: [], default: null };
       });
   }
   return neuralInfoPromise;
