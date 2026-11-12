@@ -10,6 +10,7 @@ A modern, fully functional AI chatbot built with Next.js 15, React 19, TypeScrip
 - **Conversation management** — sidebar with new chat, inline rename, delete (with confirmation), and automatic titles from the first message.
 - **Persistence** — conversations and the active chat survive page refreshes via `localStorage`.
 - **Message actions** — copy AI responses, regenerate the last response, and edit & resend any of your messages (truncates the rest of the thread).
+- **Read aloud (TTS)** — a speaker button on every AI reply, plus an optional auto-read mode. Voice, speed, and auto-read are configurable in Settings → Voice using the browser's built-in speech engine (no API key needed).
 - **Rich formatting** — Markdown with headings, lists, tables, and syntax-highlighted code blocks.
 - **Polished UX** — timestamps, smooth animations, stick-to-bottom auto-scroll with a jump-to-latest button, graceful error bubbles with retry, and rate-limit/network error handling.
 - **Responsive & accessible** — collapsible sidebar on mobile, keyboard navigation (Enter to send, Shift+Enter for newline, Escape to cancel edits), ARIA labels, and reduced-motion support.
