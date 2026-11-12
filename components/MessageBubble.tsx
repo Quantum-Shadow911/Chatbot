@@ -7,7 +7,17 @@ import { formatTime } from "@/lib/utils";
 import { CopyButton } from "./CopyButton";
 import { Markdown } from "./Markdown";
 import { TypingIndicator } from "./TypingIndicator";
-import { AlertIcon, BotIcon, EditIcon, FileIcon, ImageIcon, RefreshIcon, SpeakerIcon, StopIcon } from "./icons";
+import {
+  AlertIcon,
+  BotIcon,
+  ChevronDownIcon,
+  EditIcon,
+  FileIcon,
+  ImageIcon,
+  RefreshIcon,
+  SpeakerIcon,
+  StopIcon,
+} from "./icons";
 
 interface MessageBubbleProps {
   message: Message;
@@ -65,6 +75,50 @@ function AttachmentList({ attachments, isUser }: { attachments: Attachment[]; is
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+function ThinkingPanel({
+  reasoning,
+  active,
+}: {
+  reasoning: string;
+  active: boolean;
+}) {
+  const [expanded, setExpanded] = useState(active);
+  const wasActive = useRef(active);
+
+  useEffect(() => {
+    if (wasActive.current && !active) setExpanded(false);
+    if (!wasActive.current && active) setExpanded(true);
+    wasActive.current = active;
+  }, [active]);
+
+  return (
+    <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-slate-900/70">
+      <button
+        type="button"
+        onClick={() => setExpanded((state) => !state)}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-[11px] font-medium text-slate-400 transition-colors hover:text-slate-200"
+      >
+        {active ? (
+          <span className="shimmer-text">Thinking…</span>
+        ) : (
+          <span>Thought process</span>
+        )}
+        <ChevronDownIcon
+          width={12}
+          height={12}
+          className={`ml-auto shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
+      {expanded && (
+        <p className="max-h-56 overflow-y-auto whitespace-pre-wrap break-words border-t border-white/5 px-2.5 py-2 text-[11px] leading-relaxed text-slate-400">
+          {reasoning}
+        </p>
       )}
     </div>
   );
@@ -170,6 +224,12 @@ function MessageBubbleImpl({
           {!message.error && (message.attachments?.length ?? 0) > 0 && (
             <AttachmentList attachments={message.attachments ?? []} isUser={isUser} />
           )}
+          {!message.error && !isUser && (message.reasoning ?? "").length > 0 && (
+            <ThinkingPanel
+              reasoning={message.reasoning ?? ""}
+              active={isStreaming && message.content === ""}
+            />
+          )}
           {message.error ? (
             <>
               <AlertIcon width={16} height={16} className="mt-0.5 shrink-0" />
@@ -189,8 +249,10 @@ function MessageBubbleImpl({
             </>
           ) : isUser ? (
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
-          ) : message.content === "" && isStreaming ? (
+          ) : message.content === "" && isStreaming && !message.reasoning ? (
             <TypingIndicator />
+          ) : message.content === "" && isStreaming && message.reasoning ? (
+            <p className="shimmer-text text-xs text-slate-400">Working on it…</p>
           ) : (
             <Markdown content={message.content} />
           )}

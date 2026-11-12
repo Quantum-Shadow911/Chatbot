@@ -41,6 +41,8 @@ const MAX_MEMORY_TOTAL = 8_000;
 const BASE_SYSTEM_PROMPT =
   "You are a helpful, friendly AI assistant. Format responses with Markdown when it improves readability.";
 
+const REASONING_EFFORT_PATTERN = /gpt-oss|^(o[134](-mini|-preview)?)$|qwq|deepseek-r1/i;
+
 type ContentPart =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
@@ -258,6 +260,9 @@ export async function POST(request: NextRequest) {
           ...messages,
         ],
         stream: true,
+        ...(mode.id === "think" && REASONING_EFFORT_PATTERN.test(targetModel)
+          ? { reasoning_effort: "high" }
+          : {}),
       }),
     });
   } catch {

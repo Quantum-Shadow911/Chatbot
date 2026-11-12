@@ -22,7 +22,7 @@ export const MODES: Mode[] = [
     description: "Reasons step by step, checks its work",
     category: "reasoning",
     prompt:
-      "Think through the problem step by step before answering. Consider alternative approaches, verify your reasoning as you go, and correct mistakes. Present the final answer clearly and concisely after the reasoning. Favor accuracy over speed.",
+      "Use your full reasoning capability. Before answering, think extensively: break the problem into parts, explore multiple solution paths, work through the math or logic explicitly, test your reasoning against edge cases, look for flaws in your first attempt, and revise. Do not rush to an answer — depth and correctness matter more than speed. Then present a clean, well-organized final answer; keep the visible answer focused and put only the essential reasoning in it.",
   },
   {
     id: "research",
