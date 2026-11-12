@@ -21,6 +21,9 @@ const BUSY_RETRY_MS = 600;
 const BARGE_LOUD_LEVEL = 0.22;
 const BARGE_SPIKE_LEVEL = 0.55;
 const BARGE_GATE_MS = 160;
+const BARGE_SPEAK_LEVEL = 0.32;
+const BARGE_SPEAK_MS = 200;
+const BARGE_SPEAK_SPIKE = 0.7;
 
 const PHASE_UI: Record<Phase, { label: string; hint: string }> = {
   listening: {
@@ -81,11 +84,36 @@ export function LiveMode({
   const lastLoudAtRef = useRef(0);
   const lastLevelAtRef = useRef(0);
   const meterReadyRef = useRef(false);
+  const speakLoudAccumRef = useRef(0);
+  const meterBargeRef = useRef<() => void>(() => {});
 
   onLevelRef.current = (level: number) => {
     const now = Date.now();
     const elapsed = Math.min(60, Math.max(0, now - lastLevelAtRef.current));
     lastLevelAtRef.current = now;
+
+    if (phaseRef.current === "speaking") {
+      if (now - speakStartRef.current > 800 && level >= BARGE_SPEAK_LEVEL) {
+        speakLoudAccumRef.current = Math.min(
+          800,
+          speakLoudAccumRef.current + Math.max(elapsed, 16)
+        );
+      } else if (level < BARGE_SPEAK_LEVEL) {
+        speakLoudAccumRef.current = Math.max(
+          0,
+          speakLoudAccumRef.current - elapsed
+        );
+      }
+      if (
+        speakLoudAccumRef.current >= BARGE_SPEAK_MS ||
+        level >= BARGE_SPEAK_SPIKE
+      ) {
+        speakLoudAccumRef.current = 0;
+        meterBargeRef.current();
+      }
+      return;
+    }
+
     if (level >= BARGE_LOUD_LEVEL) {
       loudAccumRef.current = Math.min(800, loudAccumRef.current + Math.max(elapsed, 16));
       lastLoudAtRef.current = now;
@@ -192,6 +220,7 @@ export function LiveMode({
       meterReadyRef.current = false;
       voiceGateRef.current = false;
       loudAccumRef.current = 0;
+      speakLoudAccumRef.current = 0;
       if (silenceTimerRef.current !== null) {
         window.clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
@@ -209,7 +238,15 @@ export function LiveMode({
       if (!gateOpen()) return false;
       stopSpeaking();
       applyPhase("listening");
+      startMic();
       return true;
+    };
+    meterBargeRef.current = () => {
+      if (!openRef.current || phaseRef.current !== "speaking") return;
+      if (Date.now() - speakStartRef.current < 800) return;
+      stopSpeaking();
+      applyPhase("listening");
+      startMic();
     };
     handleInterimRef.current = (text: string) => {
       if (!openRef.current) return;
@@ -254,7 +291,7 @@ export function LiveMode({
       setInterim("");
       onSend(text);
     };
-  }, [onSend, applyPhase]);
+  }, [onSend, applyPhase, startMic]);
 
   useEffect(() => {
     if (!open || status === "idle") return;
@@ -273,6 +310,7 @@ export function LiveMode({
     ) {
       spokenIdRef.current = last.id;
       applyPhase("speaking");
+      recognizerRef.current?.stop();
       speakStartRef.current = Date.now();
       const started = speak(last.content, {
         naturalVoice,
@@ -302,6 +340,7 @@ export function LiveMode({
       if (phaseRef.current === "speaking") {
         stopSpeaking();
         applyPhase("listening");
+        startMic();
         return;
       }
       event.preventDefault();
@@ -309,7 +348,7 @@ export function LiveMode({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, applyPhase]);
+  }, [open, applyPhase, startMic]);
 
   if (!open) return null;
 
@@ -321,6 +360,7 @@ export function LiveMode({
     if (phase === "speaking") {
       stopSpeaking();
       applyPhase("listening");
+      startMic();
     } else if (phase === "listening" && error) {
       setError(null);
       startMic();
