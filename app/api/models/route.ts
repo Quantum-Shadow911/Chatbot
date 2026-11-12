@@ -8,6 +8,7 @@ const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
   .replace(/\/+$/, "")
   .replace(/\/v1$/, "");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
+const VISION_MODEL = (process.env.VISION_MODEL ?? "").trim();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const NON_CHAT_PATTERN =
@@ -20,7 +21,12 @@ function envModels(): string[] {
     .split(",")
     .map((model) => model.trim())
     .filter((model) => model.length > 0 && model.length <= 100);
-  return Array.from(new Set([MODEL, ...extra]));
+  return withVision(Array.from(new Set([MODEL, ...extra])));
+}
+
+function withVision(models: string[]): string[] {
+  if (!VISION_MODEL) return models;
+  return Array.from(new Set([...models, VISION_MODEL]));
 }
 
 function sortModels(models: string[]): string[] {
@@ -59,12 +65,14 @@ export async function GET() {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (apiKey) {
     try {
-      const models = sortModels(Array.from(new Set([MODEL, ...await providerModels(apiKey)])));
+      const models = sortModels(
+        withVision(Array.from(new Set([MODEL, ...await providerModels(apiKey)])))
+      );
       return NextResponse.json({ models, default: MODEL });
     } catch {
       // Fall through to the single-model default below.
     }
   }
 
-  return NextResponse.json({ models: [MODEL], default: MODEL });
+  return NextResponse.json({ models: withVision([MODEL]), default: MODEL });
 }
