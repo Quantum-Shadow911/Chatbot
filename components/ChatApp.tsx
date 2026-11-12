@@ -332,7 +332,7 @@ export function ChatApp() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-white/10 bg-slate-900/80 px-4 py-3 backdrop-blur sm:px-6">
+        <header className="relative z-20 flex items-center gap-3 border-b border-white/10 bg-slate-900/80 px-4 py-3 backdrop-blur sm:px-6">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
