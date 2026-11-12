@@ -158,7 +158,9 @@ function MessageBubbleImpl({
               ? "rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-md shadow-indigo-950/40"
               : message.error
                 ? "flex items-start gap-2 rounded-2xl rounded-tl-md border border-red-500/30 bg-red-950/40 px-4 py-2.5 text-sm leading-relaxed text-red-200"
-                : "rounded-2xl rounded-tl-md border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm leading-relaxed text-slate-100 shadow-md shadow-slate-950/30"
+                : `rounded-2xl rounded-tl-md border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm leading-relaxed text-slate-100 shadow-md shadow-slate-950/30 ${
+                    isStreaming && message.content !== "" ? "bubble-streaming" : ""
+                  }`
           }
         >
           {!message.error && (message.attachments?.length ?? 0) > 0 && (

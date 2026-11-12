@@ -108,7 +108,7 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
             {attachments.map((attachment) => (
               <li
                 key={attachment.id}
-                className="relative flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800/80 py-1.5 pl-1.5 pr-7"
+                className="chip-in relative flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800/80 py-1.5 pl-1.5 pr-7"
               >
                 {attachment.kind === "image" && attachment.dataUrl ? (
                   <img
@@ -141,8 +141,10 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
         )}
 
         <div
-          className={`flex items-end gap-2 rounded-2xl border bg-slate-800/80 transition-colors focus-within:border-indigo-400/60 ${
-            dragging ? "border-indigo-400/80 bg-indigo-500/10" : "border-white/10"
+          className={`flex items-end gap-2 rounded-2xl border bg-slate-800/80 transition-all focus-within:border-indigo-400/60 focus-within:shadow-[0_0_0_3px_var(--accent-badge-bg)] ${
+            dragging
+              ? "border-indigo-400/80 bg-indigo-500/10 shadow-[0_0_0_3px_var(--accent-badge-bg)]"
+              : "border-white/10"
           }`}
         >
           <button
@@ -210,7 +212,7 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
             disabled={!hasContent}
             aria-label="Send message"
             title="Send message"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-950/50 transition-all hover:from-indigo-400 hover:to-violet-500 focus-visible:outline-2 focus-visible:outline-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-6px_var(--accent)] transition-all hover:scale-105 hover:from-indigo-400 hover:to-violet-500 active:scale-95 focus-visible:outline-2 focus-visible:outline-indigo-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
             <SendIcon width={16} height={16} />
           </button>

@@ -148,7 +148,7 @@ export function ChatApp() {
       : (availableModels?.default ?? settings.model ?? "");
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-slate-950 text-slate-100">
+    <div className="relative z-10 flex h-dvh overflow-hidden bg-slate-950 text-slate-100">
       <Sidebar
         conversations={chat.conversations}
         activeId={chat.activeId}
@@ -181,8 +181,8 @@ export function ChatApp() {
             />
           )}
           {busy && (
-            <span className="ml-auto shrink-0 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-medium text-indigo-300">
-              Generating…
+            <span className="ml-auto shrink-0 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-medium">
+              <span className="shimmer-text">Generating…</span>
             </span>
           )}
           <button
@@ -201,7 +201,7 @@ export function ChatApp() {
         {messages.length === 0 ? (
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6">
             <div className="flex max-w-lg flex-col items-center text-center">
-              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-950/50">
+              <div className="animate-float mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-950/50">
                 <BotIcon width={30} height={30} />
               </div>
               <h2 className="text-xl font-semibold text-slate-100">How can I help you today?</h2>
@@ -210,12 +210,13 @@ export function ChatApp() {
                 details across chats. You can also attach images and files.
               </p>
               <div className="mt-6 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
-                {SUGGESTIONS.map((suggestion) => (
+                {SUGGESTIONS.map((suggestion, index) => (
                   <button
                     key={suggestion.title}
                     type="button"
                     onClick={() => chat.sendMessage(suggestion.prompt)}
-                    className="rounded-xl border border-white/10 bg-slate-900/80 px-3.5 py-3 text-left transition-colors hover:border-indigo-400/40 hover:bg-slate-800/80 focus-visible:outline-2 focus-visible:outline-indigo-400"
+                    style={{ animationDelay: `${index * 70}ms` }}
+                    className="chip-in rounded-xl border border-white/10 bg-slate-900/80 px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-400/40 hover:bg-slate-800/80 hover:shadow-[0_10px_28px_-14px_var(--accent-border)] focus-visible:outline-2 focus-visible:outline-indigo-400"
                   >
                     <span className="block text-xs font-semibold text-slate-200">
                       {suggestion.title}
@@ -270,7 +271,7 @@ export function ChatApp() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-24 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium shadow-lg backdrop-blur"
+          className="animate-toast-in fixed bottom-24 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium shadow-lg backdrop-blur"
           style={{
             backgroundColor: "var(--accent-badge-bg)",
             borderColor: "var(--accent-border)",
