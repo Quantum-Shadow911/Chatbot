@@ -259,7 +259,7 @@ export function applyTheme(settings: Settings): void {
   root.style.setProperty("--accent-strong", shift(accent, dark ? -10 : -14));
   root.style.setProperty("--accent-soft", shift(accent, dark ? 12 : 8));
   root.style.setProperty("--accent-text", dark ? shift(accent, 26, -5) : shift(accent, -22, 5));
-  root.style.setProperty("--accent-border", withAlpha(accent, dark ? 0.4 : 0.45));
-  root.style.setProperty("--accent-badge-bg", withAlpha(accent, dark ? 0.12 : 0.1));
+  root.style.setProperty("--accent-border", withAlpha(accent, dark ? 0.45 : 0.5));
+  root.style.setProperty("--accent-badge-bg", withAlpha(accent, dark ? 0.17 : 0.14));
   applyFavicon(accent);
 }

@@ -376,7 +376,9 @@ export function ChatApp() {
               <div className="animate-float mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-950/50">
                 <BotIcon width={30} height={30} />
               </div>
-              <h2 className="text-xl font-semibold text-slate-100">How can I help you today?</h2>
+              <h2 className="gradient-text text-2xl font-bold">
+                How can I help you today?
+              </h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-400">
                 Ask anything — the assistant remembers your conversation and important
                 details across chats. You can also attach images and files.
