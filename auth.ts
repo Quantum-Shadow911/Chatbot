@@ -7,6 +7,8 @@ const googleSecret = process.env.AUTH_GOOGLE_SECRET?.trim() ?? "";
 const appleId = process.env.AUTH_APPLE_ID?.trim() ?? "";
 const appleSecret = process.env.AUTH_APPLE_SECRET?.trim() ?? "";
 
+export const authEnabled = Boolean(process.env.AUTH_SECRET?.trim());
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     ...(googleId && googleSecret ? [Google] : []),
