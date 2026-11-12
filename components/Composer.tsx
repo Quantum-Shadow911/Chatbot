@@ -333,7 +333,7 @@ export function Composer({
             disabled={!hasContent}
             aria-label="Send message"
             title="Send message"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-6px_var(--accent)] transition-all hover:scale-105 hover:from-indigo-400 hover:to-violet-500 active:scale-95 focus-visible:outline-2 focus-visible:outline-indigo-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_6px_26px_-6px_var(--accent)] transition-all hover:scale-105 hover:from-indigo-400 hover:to-violet-500 hover:shadow-[0_8px_34px_-6px_var(--accent)] active:scale-95 focus-visible:outline-2 focus-visible:outline-indigo-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
             <SendIcon width={16} height={16} />
           </button>

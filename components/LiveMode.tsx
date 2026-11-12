@@ -246,146 +246,233 @@ export function LiveMode({
       role="dialog"
       aria-modal="true"
       aria-label="Live voice conversation"
-      className="animate-fade-in fixed inset-0 z-50 flex flex-col items-center bg-slate-950/95 px-6 py-5 backdrop-blur-xl"
+      className="fixed inset-0 z-50 overflow-hidden"
     >
-      <div className="flex w-full max-w-3xl items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span
-            className="flex h-8 w-8 items-center justify-center rounded-full"
+      <div className="animate-fade-in absolute inset-0 bg-slate-950/95 backdrop-blur-2xl" />
+
+      <div
+        aria-hidden
+        className="live-blob absolute -top-44 left-1/2 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full opacity-50 blur-3xl"
+        style={{
+          background: "radial-gradient(circle, var(--accent) 0%, transparent 65%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="live-blob absolute -bottom-52 -left-36 h-[30rem] w-[30rem] rounded-full opacity-30 blur-3xl"
+        style={{
+          background: "radial-gradient(circle, #22d3ee 0%, transparent 65%)",
+          animationDelay: "-6s",
+        }}
+      />
+      <div
+        aria-hidden
+        className="live-blob absolute -right-36 top-1/4 h-[26rem] w-[26rem] rounded-full opacity-30 blur-3xl"
+        style={{
+          background: "radial-gradient(circle, #c084fc 0%, transparent 65%)",
+          animationDelay: "-11s",
+        }}
+      />
+
+      <div className="relative z-10 flex h-full flex-col items-center px-6 py-5">
+        <div className="flex w-full max-w-3xl items-center justify-between">
+          <div className="flex items-center gap-2 rounded-full border px-3 py-1.5 backdrop-blur"
             style={{
+              borderColor: "var(--accent-border)",
               backgroundColor: "var(--accent-badge-bg)",
-              color: "var(--accent-text)",
             }}
           >
-            <WaveformIcon width={15} height={15} />
-          </span>
-          <h2 className="text-sm font-semibold text-slate-200">Live voice</h2>
-        </div>
-        <button
-          type="button"
-          onClick={handleClose}
-          aria-label="Close live voice mode"
-          className="rounded-full p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
-        >
-          <CloseIcon width={16} height={16} />
-        </button>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 py-4">
-        <button
-          type="button"
-          onClick={handleOrbClick}
-          aria-label={
-            phase === "speaking"
-              ? "Interrupt the AI"
-              : phase === "thinking"
-                ? "The AI is thinking"
-                : "Listening — tap to retry the microphone"
-          }
-          className="relative flex h-48 w-48 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-indigo-400"
-        >
-          {phase === "listening" && !error && (
-            <>
-              <span
-                className="live-ring absolute inset-0 rounded-full border-2"
-                style={{ borderColor: "var(--accent-border)" }}
-              />
-              <span
-                className="live-ring absolute inset-0 rounded-full border-2"
-                style={{
-                  borderColor: "var(--accent-border)",
-                  animationDelay: "0.9s",
-                }}
-              />
-            </>
-          )}
-          <span
-            className={`live-orb flex h-36 w-36 items-center justify-center rounded-full text-white ${
-              phase === "thinking" ? "opacity-80" : ""
-            }`}
-            style={{
-              background:
-                "linear-gradient(140deg, var(--accent-soft), var(--accent))",
-              boxShadow: "0 0 80px -12px var(--accent)",
-            }}
-          >
-            <OrbIcon width={40} height={40} />
-          </span>
-        </button>
-
-        <div className="text-center">
-          <p
-            aria-live="polite"
-            className={`text-lg font-semibold ${
-              phase === "thinking" ? "shimmer-text" : "text-slate-100"
-            }`}
-          >
-            {ui.label}
-            {phase === "listening" ? "…" : ""}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">{ui.hint}</p>
-        </div>
-
-        {error && (
-          <div className="flex flex-col items-center gap-2">
-            <p
-              role="alert"
-              className="max-w-md rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-center text-xs text-red-300"
+            <span
+              className={`h-2 w-2 rounded-full ${phase === "thinking" ? "animate-pulse" : "animate-ping"}`}
+              style={{ backgroundColor: "var(--accent)" }}
+            />
+            <span
+              className="text-xs font-semibold"
+              style={{ color: "var(--accent-text)" }}
             >
-              {error}
-            </p>
-            {speechRecognitionSupported() && (
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  startMic();
-                }}
-                className="text-xs font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 hover:text-slate-100"
-              >
-                Try the microphone again
-              </button>
-            )}
+              {ui.label}
+            </span>
           </div>
-        )}
-
-        <p
-          aria-live="polite"
-          className="min-h-[3.5rem] max-w-xl text-center text-base leading-relaxed text-slate-200"
-        >
-          {interim || heard || (phase === "listening" && !error ? "Say anything…" : "")}
-        </p>
-
-        {lastAssistant && lastAssistant.content && (
-          <div className="max-h-36 w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm leading-relaxed text-slate-300">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Latest reply
-            </p>
-            <p className="whitespace-pre-wrap">{lastAssistant.content}</p>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col items-center gap-3 pb-2">
-        {status !== "idle" && (
           <button
             type="button"
-            onClick={onStop}
-            className="rounded-full border border-white/15 bg-slate-800/80 px-5 py-2 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-indigo-400"
+            onClick={handleClose}
+            aria-label="Close live voice mode"
+            className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 backdrop-blur transition-all hover:scale-105 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-indigo-400 active:scale-95"
           >
-            Stop generating
+            <CloseIcon width={16} height={16} />
           </button>
-        )}
-        <button
-          type="button"
-          onClick={handleClose}
-          className="rounded-full border border-white/15 bg-slate-800/80 px-6 py-2.5 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-indigo-400"
-        >
-          End voice mode
-        </button>
-        <p className="text-[11px] text-slate-500">
-          Voice recognition works best in Chrome or Edge.
-        </p>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 py-4">
+          <button
+            type="button"
+            onClick={handleOrbClick}
+            aria-label={
+              phase === "speaking"
+                ? "Interrupt the AI"
+                : phase === "thinking"
+                  ? "The AI is thinking"
+                  : "Listening — tap to retry the microphone"
+            }
+            className="group relative flex h-60 w-60 items-center justify-center rounded-full transition-transform duration-300 hover:scale-105 focus-visible:outline-2 focus-visible:outline-indigo-400 active:scale-95"
+          >
+            {phase === "listening" && !error && (
+              <>
+                <span
+                  className="live-ring absolute inset-4 rounded-full border-2"
+                  style={{ borderColor: "var(--accent-border)" }}
+                />
+                <span
+                  className="live-ring absolute inset-4 rounded-full border-2"
+                  style={{
+                    borderColor: "var(--accent-border)",
+                    animationDelay: "0.6s",
+                  }}
+                />
+                <span
+                  className="live-ring absolute inset-4 rounded-full border-2"
+                  style={{
+                    borderColor: "var(--accent-border)",
+                    animationDelay: "1.2s",
+                  }}
+                />
+              </>
+            )}
+            {phase === "thinking" && (
+              <>
+                <span
+                  className="live-spin absolute inset-3 rounded-full"
+                  style={{
+                    background:
+                      "conic-gradient(from 0deg, transparent 5%, var(--accent) 28%, transparent 55%)",
+                  }}
+                />
+                <span className="absolute inset-6 rounded-full bg-slate-950" />
+              </>
+            )}
+            <span
+              className="live-orb absolute inset-8 rounded-full"
+              style={{
+                background: "linear-gradient(140deg, var(--accent-soft), var(--accent))",
+                boxShadow:
+                  "0 0 90px -10px var(--accent), inset 0 2px 20px rgba(255, 255, 255, 0.35)",
+              }}
+            />
+            <OrbIcon
+              width={44}
+              height={44}
+              className="relative text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+            />
+          </button>
+
+          <div className="flex h-10 items-center gap-1.5" aria-hidden>
+            {[0, 1, 2, 3, 4, 5, 6].map((bar) => (
+              <span
+                key={bar}
+                className={`live-bar w-1.5 rounded-full ${
+                  phase === "thinking" ? "opacity-25" : "opacity-90"
+                }`}
+                style={{
+                  background:
+                    "linear-gradient(180deg, var(--accent-soft), var(--accent))",
+                  animationDelay: `${bar * 0.13}s`,
+                  animationDuration: phase === "speaking" ? "0.7s" : "1.1s",
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="text-center">
+            <p
+              aria-live="polite"
+              className={`text-2xl font-bold ${
+                phase === "thinking" ? "shimmer-text" : "gradient-text"
+              }`}
+            >
+              {ui.label}
+              {phase === "listening" ? "…" : ""}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">{ui.hint}</p>
+          </div>
+
+          {error && (
+            <div className="flex flex-col items-center gap-2">
+              <p
+                role="alert"
+                className="max-w-md rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-center text-xs text-red-300 backdrop-blur"
+              >
+                {error}
+              </p>
+              {speechRecognitionSupported() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    startMic();
+                  }}
+                  className="text-xs font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 hover:text-white"
+                >
+                  Try the microphone again
+                </button>
+              )}
+            </div>
+          )}
+
+          <p
+            aria-live="polite"
+            className="min-h-[3.5rem] max-w-xl text-center text-xl font-medium leading-relaxed text-white"
+          >
+            {interim ? (
+              <span className="text-slate-400">{interim}</span>
+            ) : (
+              heard ||
+              (phase === "listening" && !error ? (
+                <span className="text-slate-500">Say anything…</span>
+              ) : (
+                ""
+              ))
+            )}
+          </p>
+
+          {lastAssistant && lastAssistant.content && (
+            <div className="max-h-36 w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-slate-200 backdrop-blur">
+              <p
+                className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider"
+                style={{ color: "var(--accent-text)" }}
+              >
+                Latest reply
+              </p>
+              <p className="whitespace-pre-wrap">{lastAssistant.content}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col items-center gap-3 pb-2">
+          {status !== "idle" && (
+            <button
+              type="button"
+              onClick={onStop}
+              className="rounded-full border border-white/15 bg-white/5 px-5 py-2 text-xs font-medium text-slate-200 backdrop-blur transition-all hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-indigo-400"
+            >
+              Stop generating
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-full border px-7 py-2.5 text-sm font-semibold text-white shadow-lg backdrop-blur transition-all hover:scale-105 focus-visible:outline-2 focus-visible:outline-indigo-400 active:scale-95"
+            style={{
+              borderColor: "var(--accent-border)",
+              background: "linear-gradient(120deg, var(--accent-soft), var(--accent))",
+              boxShadow: "0 8px 30px -8px var(--accent)",
+            }}
+          >
+            End voice mode
+          </button>
+          <p className="text-[11px] text-slate-500">
+            Voice recognition works best in Chrome or Edge.
+          </p>
+        </div>
       </div>
     </div>
   );
