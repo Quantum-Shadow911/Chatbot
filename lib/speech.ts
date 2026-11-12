@@ -51,6 +51,7 @@ export function naturalTtsInfo(): Promise<NaturalTtsInfo> {
 
 const audioCache = new Map<string, string>();
 let currentAudio: HTMLAudioElement | null = null;
+let speechEpoch = 0;
 
 let audioUnlocked = false;
 
@@ -111,7 +112,8 @@ function cacheAudio(key: string, url: string): void {
 async function playNeural(
   text: string,
   voice: string | null,
-  onEnd?: () => void
+  onEnd: (() => void) | undefined,
+  epoch: number
 ): Promise<boolean> {
   const key = `${voice ?? "default"}::${text}`;
   let url = audioCache.get(key);
@@ -132,11 +134,12 @@ async function playNeural(
     url = URL.createObjectURL(blob);
     cacheAudio(key, url);
   }
+  if (epoch !== speechEpoch) return true;
   const audio = new Audio(url);
   audio.preload = "auto";
   const finish = () => {
     if (currentAudio === audio) currentAudio = null;
-    onEnd?.();
+    if (epoch === speechEpoch) onEnd?.();
   };
   audio.onended = finish;
   audio.onerror = finish;
@@ -159,22 +162,27 @@ export function speak(
     return false;
   }
   stopSpeaking();
+  const epoch = speechEpoch;
   void (async () => {
     const info = await naturalTtsInfo();
+    if (epoch !== speechEpoch) return;
     if (info.available) {
       const played = await playNeural(
         clean,
         options.naturalVoice ?? info.default,
-        options.onEnd
+        options.onEnd,
+        epoch
       );
       if (played) return;
     }
+    if (epoch !== speechEpoch) return;
     options.onEnd?.();
   })();
   return true;
 }
 
 export function stopSpeaking(): void {
+  speechEpoch += 1;
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.removeAttribute("src");
