@@ -5,7 +5,8 @@ import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
 import { printPdf } from "@/lib/pdf";
-import { speak, stopSpeaking } from "@/lib/speech";
+import { speak, stopSpeaking, unlockAudioPlayback } from "@/lib/speech";
+import { applyFavicon, DEFAULT_ACCENT, type FaviconVariant } from "@/lib/theme";
 import { formatDate } from "@/lib/utils";
 import { supportsVision } from "@/lib/vision";
 import type { AuthProviderInfo, Message, SessionInfo } from "@/lib/types";
@@ -137,6 +138,15 @@ export function ChatApp() {
   }, [chat.status, chat.activeConversation, clearSpeech, startSpeech]);
 
   useEffect(() => clearSpeech, [clearSpeech]);
+
+  useEffect(() => {
+    unlockAudioPlayback();
+  }, []);
+
+  useEffect(() => {
+    const variant: FaviconVariant = liveOpen ? "ocean" : "default";
+    applyFavicon(settings.accent ?? DEFAULT_ACCENT, variant);
+  }, [liveOpen, settings.accent]);
 
   useEffect(() => {
     if (!memoryNotice) return;

@@ -315,6 +315,19 @@ export function MicIcon(props: IconProps) {
   );
 }
 
+export function WaveformIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M2 10v4" />
+      <path d="M6 6v12" />
+      <path d="M10 3v18" />
+      <path d="M14 8v8" />
+      <path d="M18 5v14" />
+      <path d="M22 10v4" />
+    </svg>
+  );
+}
+
 export function DownloadIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

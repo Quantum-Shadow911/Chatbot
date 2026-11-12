@@ -150,14 +150,21 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function drawFavicon(size: number, accent: string): string {
+export type FaviconVariant = "default" | "ocean";
+
+function drawFavicon(
+  size: number,
+  accent: string,
+  variant: FaviconVariant
+): string {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) return "";
   const s = size / 64;
-  ctx.fillStyle = "#020617";
+  const ocean = variant === "ocean";
+  ctx.fillStyle = ocean ? "#053048" : "#020617";
   ctx.beginPath();
   if (typeof ctx.roundRect === "function") {
     ctx.roundRect(0, 0, size, size, 14 * s);
@@ -166,8 +173,13 @@ function drawFavicon(size: number, accent: string): string {
   }
   ctx.fill();
   const gradient = ctx.createLinearGradient(0, 0, size, size);
-  gradient.addColorStop(0, shift(accent, 8));
-  gradient.addColorStop(1, accent);
+  if (ocean) {
+    gradient.addColorStop(0, "#67e8f9");
+    gradient.addColorStop(1, "#0e7490");
+  } else {
+    gradient.addColorStop(0, shift(accent, 8));
+    gradient.addColorStop(1, accent);
+  }
   ctx.fillStyle = gradient;
   ctx.beginPath();
   ctx.ellipse(32 * s, 29.5 * s, 20 * s, 17.5 * s, 0, 0, Math.PI * 2);
@@ -176,18 +188,33 @@ function drawFavicon(size: number, accent: string): string {
   ctx.lineTo(27.6 * s, 49.5 * s);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = "#020617";
-  for (const cx of [23, 32, 41]) {
+  ctx.fillStyle = ocean ? "#053048" : "#020617";
+  if (ocean) {
+    ctx.strokeStyle = "#cffafe";
+    ctx.lineWidth = 2.6 * s;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.arc(cx * s, 29.5 * s, 3 * s, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(25.5 * s, 31 * s, 4.5 * s, Math.PI * 0.85, Math.PI * 1.85);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(35.5 * s, 31 * s, 4.5 * s, Math.PI * 1.15, Math.PI * 2.15);
+    ctx.stroke();
+  } else {
+    for (const cx of [23, 32, 41]) {
+      ctx.beginPath();
+      ctx.arc(cx * s, 29.5 * s, 3 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   return canvas.toDataURL("image/png");
 }
 
-export function applyFavicon(accent: string): void {
+export function applyFavicon(
+  accent: string,
+  variant: FaviconVariant = "default"
+): void {
   if (typeof document === "undefined") return;
-  const href = drawFavicon(64, accent);
+  const href = drawFavicon(64, accent, variant);
   if (!href) return;
   document
     .querySelectorAll<HTMLLinkElement>("link[rel='icon']:not([data-dynamic-accent])")
@@ -204,7 +231,7 @@ export function applyFavicon(accent: string): void {
   }
   if (link.href !== href) link.href = href;
 
-  const touchHref = drawFavicon(180, accent);
+  const touchHref = drawFavicon(180, accent, variant);
   if (!touchHref) return;
   let touch = document.querySelector<HTMLLinkElement>(
     "link[rel='apple-touch-icon'][data-dynamic-accent]"

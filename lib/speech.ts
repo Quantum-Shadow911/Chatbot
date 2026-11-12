@@ -52,6 +52,54 @@ export function naturalTtsInfo(): Promise<NaturalTtsInfo> {
 const audioCache = new Map<string, string>();
 let currentAudio: HTMLAudioElement | null = null;
 
+let audioUnlocked = false;
+
+function silentWavUrl(): string {
+  const sampleRate = 8000;
+  const samples = 800;
+  const buffer = new ArrayBuffer(44 + samples);
+  const view = new DataView(buffer);
+  const writeStr = (offset: number, value: string) => {
+    for (let i = 0; i < value.length; i += 1) {
+      view.setUint8(offset + i, value.charCodeAt(i));
+    }
+  };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + samples, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  writeStr(36, "data");
+  view.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i += 1) view.setUint8(44 + i, 128);
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return `data:audio/wav;base64,${btoa(binary)}`;
+}
+
+export function unlockAudioPlayback(): void {
+  if (typeof window === "undefined" || audioUnlocked) return;
+  const unlock = () => {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    const silent = new Audio(silentWavUrl());
+    silent.volume = 0;
+    void silent.play().catch(() => {});
+  };
+  window.addEventListener("pointerdown", unlock, { once: true });
+  window.addEventListener("touchend", unlock, { once: true });
+  window.addEventListener("keydown", unlock, { once: true });
+}
+
 function cacheAudio(key: string, url: string): void {
   if (audioCache.size >= AUDIO_CACHE_LIMIT) {
     const oldest = audioCache.keys().next().value;
@@ -85,6 +133,7 @@ async function playNeural(
     cacheAudio(key, url);
   }
   const audio = new Audio(url);
+  audio.preload = "auto";
   const finish = () => {
     if (currentAudio === audio) currentAudio = null;
     onEnd?.();
