@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
+import { printPdf } from "@/lib/pdf";
 import { speak, speechSupported, stopSpeaking } from "@/lib/speech";
+import { formatDate } from "@/lib/utils";
 import { supportsVision } from "@/lib/vision";
 import type { AuthProviderInfo, Message, SessionInfo } from "@/lib/types";
 import { Composer } from "./Composer";
@@ -262,8 +264,20 @@ export function ChatApp() {
     setSidebarOpen(false);
   }, [chat.deleteAllConversations]);
 
+
+
   const conversation = chat.activeConversation;
   const messages = conversation?.messages ?? [];
+
+  const handleExportPdf = useCallback(() => {
+    const list = document.querySelector("[data-message-list]");
+    if (!list) return;
+    printPdf(
+      conversation?.title ?? "AI Chatbot conversation",
+      list.innerHTML,
+      `Exported from AI Chatbot · ${formatDate(Date.now())}`
+    );
+  }, [conversation]);
   const busy = chat.status !== "idle";
   const models = availableModels?.models ?? [];
   const currentModel =
@@ -363,6 +377,7 @@ export function ChatApp() {
             canRegenerate={chat.status === "idle"}
             speakingId={speakingId}
             onSpeakToggle={handleSpeakToggle}
+            conversationTitle={conversation?.title ?? ""}
             onRegenerate={chat.regenerate}
             onEditResend={handleEditResend}
           />
@@ -399,6 +414,8 @@ export function ChatApp() {
           }}
           dataControls={{
             onExport: handleExport,
+            onExportPdf: handleExportPdf,
+            canExportPdf: messages.length > 0 && !busy,
             onDeleteAll: handleDeleteAll,
             canDeleteAll: !busy && chat.conversations.length > 0,
             conversationCount: chat.conversations.length,

@@ -11,6 +11,7 @@ interface MessageListProps {
   canRegenerate: boolean;
   speakingId: string | null;
   onSpeakToggle: (message: Message) => void;
+  conversationTitle: string;
   onRegenerate: () => void;
   onEditResend: (id: string, content: string) => boolean;
 }
@@ -21,6 +22,7 @@ export function MessageList({
   canRegenerate,
   speakingId,
   onSpeakToggle,
+  conversationTitle,
   onRegenerate,
   onEditResend,
 }: MessageListProps) {
@@ -68,6 +70,7 @@ export function MessageList({
     <div className="relative min-h-0 flex-1">
       <div
         ref={containerRef}
+        data-message-list
         className="h-full overflow-y-auto scroll-smooth px-4 py-6 sm:px-6"
         role="log"
         aria-label="Conversation messages"
@@ -84,6 +87,7 @@ export function MessageList({
               canRegenerate={canRegenerate}
               isSpeaking={speakingId === message.id}
               onSpeakToggle={onSpeakToggle}
+              conversationTitle={conversationTitle}
               onRegenerate={onRegenerate}
               onEdit={setEditingId}
               onCancelEdit={() => setEditingId(null)}

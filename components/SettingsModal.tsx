@@ -24,6 +24,8 @@ interface MemorySettings {
 
 interface DataControls {
   onExport: () => void;
+  onExportPdf: () => void;
+  canExportPdf: boolean;
   onDeleteAll: () => void;
   canDeleteAll: boolean;
   conversationCount: number;
@@ -456,6 +458,25 @@ export function SettingsModal({
                   className="shrink-0 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10"
                 >
                   Export
+                </button>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-800/60 px-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-200">
+                    Export current chat as PDF
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    Open a printable copy of this conversation.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={dataControls.onExportPdf}
+                  disabled={!dataControls.canExportPdf}
+                  className="shrink-0 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  PDF
                 </button>
               </div>
 
