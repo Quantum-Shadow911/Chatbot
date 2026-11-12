@@ -153,34 +153,72 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function drawFavicon(size: number, accent: string): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  const s = size / 64;
+  ctx.fillStyle = "#020617";
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(0, 0, size, size, 14 * s);
+  } else {
+    ctx.rect(0, 0, size, size);
+  }
+  ctx.fill();
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, shift(accent, 8));
+  gradient.addColorStop(1, accent);
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(32 * s, 29.5 * s, 20 * s, 17.5 * s, 0, 0, Math.PI * 2);
+  ctx.moveTo(19.5 * s, 43 * s);
+  ctx.lineTo(19.5 * s, 54 * s);
+  ctx.lineTo(27.6 * s, 49.5 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#020617";
+  for (const cx of [23, 32, 41]) {
+    ctx.beginPath();
+    ctx.arc(cx * s, 29.5 * s, 3 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvas.toDataURL("image/png");
+}
+
 export function applyFavicon(accent: string): void {
   if (typeof document === "undefined") return;
-  const light = shift(accent, 8);
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">` +
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-    `<stop offset="0" stop-color="${light}"/><stop offset="1" stop-color="${accent}"/>` +
-    `</linearGradient></defs>` +
-    `<rect width="64" height="64" rx="14" fill="#020617"/>` +
-    `<path d="M32 12c-11.05 0-20 7.83-20 17.5 0 5.51 2.93 10.43 7.5 13.68V54l8.09-4.44c1.42.29 2.89.44 4.41.44 11.05 0 20-7.83 20-17.5S43.05 12 32 12Z" fill="url(#g)"/>` +
-    `<circle cx="23" cy="29.5" r="3" fill="#020617"/>` +
-    `<circle cx="32" cy="29.5" r="3" fill="#020617"/>` +
-    `<circle cx="41" cy="29.5" r="3" fill="#020617"/></svg>`;
-  const href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  const href = drawFavicon(64, accent);
+  if (!href) return;
+  document
+    .querySelectorAll<HTMLLinkElement>("link[rel='icon']:not([data-dynamic-accent])")
+    .forEach((existing) => existing.remove());
   let link = document.querySelector<HTMLLinkElement>(
     "link[rel='icon'][data-dynamic-accent]"
   );
   if (!link) {
-    document
-      .querySelectorAll<HTMLLinkElement>("link[rel='icon']:not([data-dynamic-accent])")
-      .forEach((existing) => existing.remove());
     link = document.createElement("link");
     link.rel = "icon";
-    link.type = "image/svg+xml";
+    link.type = "image/png";
     link.setAttribute("data-dynamic-accent", "");
     document.head.appendChild(link);
   }
   if (link.href !== href) link.href = href;
+
+  const touchHref = drawFavicon(180, accent);
+  if (!touchHref) return;
+  let touch = document.querySelector<HTMLLinkElement>(
+    "link[rel='apple-touch-icon'][data-dynamic-accent]"
+  );
+  if (!touch) {
+    touch = document.createElement("link");
+    touch.rel = "apple-touch-icon";
+    touch.setAttribute("data-dynamic-accent", "");
+    document.head.appendChild(touch);
+  }
+  if (touch.href !== touchHref) touch.href = touchHref;
 }
 
 export function applyTheme(settings: Settings): void {

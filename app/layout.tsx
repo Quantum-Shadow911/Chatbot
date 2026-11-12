@@ -37,10 +37,6 @@ try {
     r.setProperty("--accent-text",dark?sh(accent,26,-5):sh(accent,-22,5));
     r.setProperty("--accent-border",al(accent,dark?0.4:0.45));
     r.setProperty("--accent-badge-bg",al(accent,dark?0.12:0.1));
-    var li=sh(accent,8);
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+li+'"/><stop offset="1" stop-color="'+accent+'"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="#020617"/><path d="M32 12c-11.05 0-20 7.83-20 17.5 0 5.51 2.93 10.43 7.5 13.68V54l8.09-4.44c1.42.29 2.89.44 4.41.44 11.05 0 20-7.83 20-17.5S43.05 12 32 12Z" fill="url(#g)"/><circle cx="23" cy="29.5" r="3" fill="#020617"/><circle cx="32" cy="29.5" r="3" fill="#020617"/><circle cx="41" cy="29.5" r="3" fill="#020617"/></svg>';
-    document.querySelectorAll("link[rel='icon']:not([data-dynamic-accent])").forEach(function(el){el.remove()});
-    var lk=document.createElement("link");lk.rel="icon";lk.type="image/svg+xml";lk.setAttribute("data-dynamic-accent","");lk.href="data:image/svg+xml,"+encodeURIComponent(svg);document.head.appendChild(lk);
   }
 } catch (e) {}
 `;
