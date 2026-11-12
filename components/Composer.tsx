@@ -9,9 +9,10 @@ interface ComposerProps {
   busy: boolean;
   onSend: (content: string, attachments?: Attachment[]) => void;
   onStop: () => void;
+  modelSupportsImages: boolean;
 }
 
-export function Composer({ busy, onSend, onStop }: ComposerProps) {
+export function Composer({ busy, onSend, onStop, modelSupportsImages }: ComposerProps) {
   const [value, setValue] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -190,6 +191,23 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
             {fileError}
           </p>
         )}
+
+        {!modelSupportsImages &&
+          attachments.some((a) => a.kind === "image") && (
+            <p
+              role="status"
+              className="mt-2 rounded-lg border px-2.5 py-1.5 text-xs"
+              style={{
+                borderColor: "var(--accent-border)",
+                backgroundColor: "var(--accent-badge-bg)",
+                color: "var(--accent-text)",
+              }}
+            >
+              The selected model can’t see images. Pick a vision-capable model
+              from the header dropdown, or remove the image — the rest of your
+              message will still work.
+            </p>
+          )}
       </div>
 
       <div className="mx-auto mt-2 flex max-w-3xl items-center justify-between gap-2">
