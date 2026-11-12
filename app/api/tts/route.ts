@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const TTS_MODEL = "playai-tts";
+const TTS_MODEL = "canopylabs/orpheus-v1-english";
 const TTS_API_URL = (
   process.env.TTS_API_URL ??
   process.env.MISTRAL_API_URL ??
@@ -15,27 +15,15 @@ const TTS_API_KEY = (
   ""
 ).trim();
 const MAX_TTS_LENGTH = 10_000;
-const DEFAULT_VOICE = "Celeste-PlayAI";
+const DEFAULT_VOICE = "hannah";
 
 const VOICES: { id: string; name: string }[] = [
-  { id: "Arista-PlayAI", name: "Arista — bright, female" },
-  { id: "Atlas-PlayAI", name: "Atlas — deep, male" },
-  { id: "Basil-PlayAI", name: "Basil — warm, male" },
-  { id: "Briggs-PlayAI", name: "Briggs — deep, male" },
-  { id: "Celeste-PlayAI", name: "Celeste — warm, female" },
-  { id: "Cheyenne-PlayAI", name: "Cheyenne — bright, female" },
-  { id: "Chip-PlayAI", name: "Chip — cheerful, male" },
-  { id: "Cillian-PlayAI", name: "Cillian — calm, male" },
-  { id: "Deedee-PlayAI", name: "Deedee — playful, female" },
-  { id: "Fritz-PlayAI", name: "Fritz — quirky, male" },
-  { id: "Gail-PlayAI", name: "Gail — clear, female" },
-  { id: "Indigo-PlayAI", name: "Indigo — smooth, neutral" },
-  { id: "Mamaw-PlayAI", name: "Mamaw — grandmother" },
-  { id: "Mason-PlayAI", name: "Mason — deep, male" },
-  { id: "Mikail-PlayAI", name: "Mikail — smooth, male" },
-  { id: "Mitch-PlayAI", name: "Mitch — casual, male" },
-  { id: "Quinn-PlayAI", name: "Quinn — friendly, male" },
-  { id: "Thunder-PlayAI", name: "Thunder — bold, male" },
+  { id: "hannah", name: "Hannah — warm, female" },
+  { id: "autumn", name: "Autumn — bright, female" },
+  { id: "diana", name: "Diana — expressive, female" },
+  { id: "austin", name: "Austin — casual, male" },
+  { id: "daniel", name: "Daniel — deep, male" },
+  { id: "troy", name: "Troy — confident, male" },
 ];
 
 const VOICE_IDS = new Set(VOICES.map((voice) => voice.id));
@@ -108,7 +96,7 @@ export async function POST(request: NextRequest) {
         model: TTS_MODEL,
         input: text,
         voice,
-        response_format: "mp3",
+        response_format: "wav",
       }),
     });
   } catch {
@@ -138,7 +126,7 @@ export async function POST(request: NextRequest) {
   return new NextResponse(upstream.body, {
     status: 200,
     headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "audio/mpeg",
+      "Content-Type": upstream.headers.get("content-type") ?? "audio/wav",
       "Cache-Control": "no-store",
     },
   });
