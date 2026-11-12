@@ -41,6 +41,20 @@ const MAX_MEMORY_TOTAL = 8_000;
 const BASE_SYSTEM_PROMPT =
   "You are a helpful, friendly AI assistant. Format responses with Markdown when it improves readability.";
 
+const CANVAS_PROMPT = [
+  "You can create rich canvases: interactive artifacts that open in a side panel next to the chat.",
+  "To create one, emit a block exactly in this format, with the opening line on its own line:",
+  "<<<CANVAS type | Title>>>",
+  "...content...",
+  "<<<END-CANVAS>>>",
+  "Available types:",
+  '- "quiz" — content must be ONLY valid JSON, no code fences, in this shape: {"title": "...", "questions": [{"question": "...", "choices": ["...", "...", "...", "..."], "answer": 0, "explain": "brief why"}]}. "answer" is the 0-based index of the correct choice. Use 3-10 questions with exactly 4 choices each.',
+  '- "html" — one complete, self-contained HTML page with inline <style> and <script>, no external requests, polished dark design. Use for interactive demos, simulations, tools, posters, and small games.',
+  '- "video" — one self-contained HTML page that plays like a short animated video: an animated scene built with CSS animations and/or <canvas> JavaScript that starts automatically and loops or tells a small visual story. No sound, no external requests.',
+  '- "document" — a polished Markdown document for essays, study notes, plans, stories, and guides.',
+  "When the user asks for a quiz, practice test, a document, an animated explainer, a visual demo, or anything that works better as a standalone artifact, create a canvas instead of answering inline. Keep any chat text before the canvas to one short sentence. Never put a canvas block inside a code fence. Always close the block with <<<END-CANVAS>>>.",
+].join("\n");
+
 const LIVE_VOICE_PROMPT = [
   "You are in a live, spoken voice conversation, so every reply will be read aloud by a lifelike voice.",
   "Keep replies short and conversational: usually one to three sentences, at most a short paragraph.",
@@ -158,7 +172,11 @@ function buildSystemMessage(
 ): string {
   const parts = [BASE_SYSTEM_PROMPT];
   if (modePrompt) parts.push(modePrompt);
-  if (livePrompt) parts.push(livePrompt);
+  if (livePrompt) {
+    parts.push(livePrompt);
+  } else {
+    parts.push(CANVAS_PROMPT);
+  }
   if (memories.length > 0) {
     parts.push(
       `Long-term memories about the user, gathered from previous conversations:\n${memories
