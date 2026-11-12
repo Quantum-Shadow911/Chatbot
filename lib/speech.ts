@@ -26,6 +26,8 @@ export function onVoicesChanged(callback: () => void): () => void {
     window.speechSynthesis.removeEventListener("voiceschanged", callback);
 }
 
+const EMOJI_PATTERN = /[\u{1F000}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{2022}\u{25A0}-\u{25FF}\u{E0020}-\u{E007F}]/gu;
+
 export function stripMarkdownForSpeech(text: string): string {
   return text
     .replace(/```[\s\S]*?(```|$)/g, " Code block omitted. ")
@@ -36,6 +38,7 @@ export function stripMarkdownForSpeech(text: string): string {
     .replace(/^\s*\d+\.\s+/gm, "")
     .replace(/^\s*[-=]{3,}\s*$/gm, "")
     .replace(/[*_~`>|]/g, "")
+    .replace(EMOJI_PATTERN, "")
     .replace(/\n{2,}/g, ". ")
     .replace(/\s+/g, " ")
     .trim();

@@ -121,6 +121,7 @@ export function ChatApp() {
     getMemories: () => (memoryEnabled ? memoryRef.current.map((m) => m.text) : []),
     getModel: () => settings.model,
     getMode: () => settings.mode,
+    getLive: () => liveOpenRef.current,
     onMemoriesExtracted: handleMemoriesExtracted,
   });
 
