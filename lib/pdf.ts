@@ -47,6 +47,21 @@ const PRINT_STYLES = `
   }
   .pdf-header h1 { margin: 0 0 4px; font-size: 1.3em; }
   .pdf-header p { margin: 0; color: #71717a; font-size: 12px; }
+  .pdf-msg { margin: 1.4em 0; }
+  .pdf-msg-role {
+    margin: 0 0 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6d28d9;
+  }
+  .pdf-msg-user {
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
 `.trim();
 
 function escapeHtml(text: string): string {

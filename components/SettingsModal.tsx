@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, type Settings, type ThemeMode } from "@/lib/theme";
+import { trapTabKey } from "@/lib/focusTrap";
 import type { MemoryItem } from "@/lib/memory";
 import {
   naturalTtsInfo,
@@ -110,6 +111,7 @@ export function SettingsModal({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
+      trapTabKey(dialogRef.current, event);
     };
     window.addEventListener("keydown", onKeyDown);
     dialogRef.current?.focus();

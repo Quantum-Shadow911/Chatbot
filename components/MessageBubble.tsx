@@ -215,6 +215,8 @@ function MessageBubbleImpl({
         }`}
       >
         <div
+          data-pdf-block={message.error ? undefined : true}
+          data-message-role={isUser ? "user" : "assistant"}
           className={
             isUser
               ? "rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-md shadow-indigo-950/40"
