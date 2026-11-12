@@ -41,6 +41,13 @@ const MAX_MEMORY_TOTAL = 8_000;
 const BASE_SYSTEM_PROMPT =
   "You are a helpful, friendly AI assistant. Format responses with Markdown when it improves readability.";
 
+const LIVE_VOICE_PROMPT = [
+  "You are in a live, spoken voice conversation, so every reply will be read aloud.",
+  "Keep replies short and conversational: usually one to three sentences, at most a short paragraph.",
+  "Write plain spoken text only: no markdown, no headings, no bullet lists, no numbered lists, no tables, no code blocks, no emojis, and no decorative symbols.",
+  "Prefer natural sentences a person would actually say, and spell out anything that would read awkwardly aloud.",
+].join(" ");
+
 const REASONING_EFFORT_PATTERN = /gpt-oss|^(o[134](-mini|-preview)?)$|qwq|deepseek-r1/i;
 
 type ContentPart =
@@ -143,9 +150,14 @@ function lastUserText(messages: IncomingMessage[]): string {
   return "";
 }
 
-function buildSystemMessage(memories: string[], modePrompt: string): string {
+function buildSystemMessage(
+  memories: string[],
+  modePrompt: string,
+  livePrompt: string
+): string {
   const parts = [BASE_SYSTEM_PROMPT];
   if (modePrompt) parts.push(modePrompt);
+  if (livePrompt) parts.push(livePrompt);
   if (memories.length > 0) {
     parts.push(
       `Long-term memories about the user, gathered from previous conversations:\n${memories
@@ -221,11 +233,16 @@ export async function POST(request: NextRequest) {
     typeof (body as Record<string, unknown>).mode === "string"
       ? ((body as Record<string, unknown>).mode as string).slice(0, 32)
       : "auto";
+  const live =
+    typeof body === "object" &&
+    body !== null &&
+    (body as Record<string, unknown>).live === true;
   const mode = getMode(isModeId(requestedMode) ? requestedMode : "auto");
   const modePrompt =
     mode.id === "auto"
       ? getMode(detectModeId(lastUserText(messages))).prompt
       : mode.prompt;
+  const livePrompt = live ? LIVE_VOICE_PROMPT : "";
 
   let upstream: Response;
   const hasImages = messages.some(
@@ -256,11 +273,11 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: targetModel,
         messages: [
-          { role: "system", content: buildSystemMessage(memories, modePrompt) },
+          { role: "system", content: buildSystemMessage(memories, modePrompt, livePrompt) },
           ...messages,
         ],
         stream: true,
-        ...(mode.id === "think" && REASONING_EFFORT_PATTERN.test(targetModel)
+        ...(mode.id === "think" && !live && REASONING_EFFORT_PATTERN.test(targetModel)
           ? { reasoning_effort: "high", max_completion_tokens: 16_384 }
           : {}),
       }),
