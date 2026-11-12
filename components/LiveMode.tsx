@@ -18,6 +18,9 @@ type ChatStatus = "idle" | "loading" | "streaming";
 
 const SEND_SILENCE_MS = 900;
 const BUSY_RETRY_MS = 600;
+const BARGE_LOUD_LEVEL = 0.22;
+const BARGE_SPIKE_LEVEL = 0.55;
+const BARGE_GATE_MS = 160;
 
 const PHASE_UI: Record<Phase, { label: string; hint: string }> = {
   listening: {
@@ -73,8 +76,25 @@ export function LiveMode({
   const speakStartRef = useRef(0);
   const onLevelRef = useRef<(level: number) => void>(() => {});
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const voiceGateRef = useRef(false);
+  const loudAccumRef = useRef(0);
+  const lastLoudAtRef = useRef(0);
+  const lastLevelAtRef = useRef(0);
+  const meterReadyRef = useRef(false);
 
   onLevelRef.current = (level: number) => {
+    const now = Date.now();
+    const elapsed = Math.min(60, Math.max(0, now - lastLevelAtRef.current));
+    lastLevelAtRef.current = now;
+    if (level >= BARGE_LOUD_LEVEL) {
+      loudAccumRef.current = Math.min(800, loudAccumRef.current + Math.max(elapsed, 16));
+      lastLoudAtRef.current = now;
+    } else if (now - lastLoudAtRef.current > 500) {
+      loudAccumRef.current = 0;
+    }
+    voiceGateRef.current =
+      loudAccumRef.current >= BARGE_GATE_MS || level >= BARGE_SPIKE_LEVEL;
+
     const orb = orbRef.current;
     if (orb && phaseRef.current === "listening") {
       orb.style.transform = `scale(${1 + level * 0.22})`;
@@ -157,7 +177,11 @@ export function LiveMode({
 
     const meter = createMicMeter((level) => onLevelRef.current(level));
     meterRef.current = meter;
-    if (meter) void meter.start();
+    if (meter) {
+      void meter.start().then((started) => {
+        meterReadyRef.current = started;
+      });
+    }
 
     return () => {
       openRef.current = false;
@@ -165,6 +189,9 @@ export function LiveMode({
       recognizerRef.current = null;
       meterRef.current?.stop();
       meterRef.current = null;
+      meterReadyRef.current = false;
+      voiceGateRef.current = false;
+      loudAccumRef.current = 0;
       if (silenceTimerRef.current !== null) {
         window.clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
@@ -175,8 +202,11 @@ export function LiveMode({
   }, [open, applyPhase]);
 
   useEffect(() => {
+    const gateOpen = () =>
+      !meterReadyRef.current || voiceGateRef.current;
     const bargeIn = () => {
       if (Date.now() - speakStartRef.current < 800) return false;
+      if (!gateOpen()) return false;
       stopSpeaking();
       applyPhase("listening");
       return true;
@@ -184,7 +214,7 @@ export function LiveMode({
     handleInterimRef.current = (text: string) => {
       if (!openRef.current) return;
       if (phaseRef.current === "speaking") {
-        if (text.trim().length < 3 || !bargeIn()) return;
+        if (text.trim().length < 5 || !bargeIn()) return;
       }
       setInterim(text);
     };
@@ -192,8 +222,10 @@ export function LiveMode({
       if (!openRef.current) return;
       if (phaseRef.current === "speaking" && !bargeIn()) return;
       if (statusRef.current !== "idle") {
-        onStopRef.current();
-        applyPhase("listening");
+        if (gateOpen()) {
+          onStopRef.current();
+          applyPhase("listening");
+        }
       }
       pendingRef.current = `${pendingRef.current} ${text}`.trim();
       setInterim("");

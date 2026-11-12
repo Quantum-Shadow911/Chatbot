@@ -199,7 +199,13 @@ export function createMicMeter(onLevel: (level: number) => void): MicMeter | nul
     start: async () => {
       if (running) return true;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
         const Ctx: typeof AudioContext | undefined =
           window.AudioContext ??
           (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
