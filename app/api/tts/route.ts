@@ -37,7 +37,8 @@ function speechUrl(raw: string): string {
 export async function GET() {
   return NextResponse.json(
     {
-      available: Boolean(TTS_API_URL && TTS_API_KEY),
+      available: true,
+      groqReady: Boolean(TTS_API_URL && TTS_API_KEY),
       model: TTS_MODEL,
       voices: VOICES,
       default: DEFAULT_VOICE,
@@ -84,49 +85,109 @@ export async function POST(request: NextRequest) {
     typeof rawVoice === "string" ? rawVoice.trim().slice(0, 64) : "";
   const voice = VOICE_IDS.has(requestedVoice) ? requestedVoice : DEFAULT_VOICE;
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(speechUrl(TTS_API_URL), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${TTS_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: TTS_MODEL,
-        input: text,
-        voice,
-        response_format: "wav",
-      }),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Could not reach the text-to-speech service." },
-      { status: 502 }
-    );
-  }
-
-  if (!upstream.ok || !upstream.body) {
-    let detail = "";
+  if (TTS_API_URL && TTS_API_KEY) {
     try {
-      detail = (await upstream.text()).slice(0, 300);
+      const upstream = await fetch(speechUrl(TTS_API_URL), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${TTS_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: TTS_MODEL,
+          input: text,
+          voice,
+          response_format: "wav",
+        }),
+      });
+      if (upstream.ok && upstream.body) {
+        return new NextResponse(upstream.body, {
+          status: 200,
+          headers: {
+            "Content-Type": upstream.headers.get("content-type") ?? "audio/wav",
+            "Cache-Control": "no-store",
+          },
+        });
+      }
     } catch {
-      // Keep the generic message when the error body is unreadable.
+      // Fall through to the built-in fallback voice.
     }
-    return NextResponse.json(
-      {
-        error: detail
-          ? `Text-to-speech failed (${upstream.status}): ${detail}`
-          : `Text-to-speech failed (${upstream.status}).`,
-      },
-      { status: upstream.status === 400 ? 400 : 502 }
-    );
   }
 
-  return new NextResponse(upstream.body, {
+  const fallback = await googleTtsResponse(text);
+  if (fallback) return fallback;
+  return NextResponse.json(
+    { error: "Could not generate speech right now. Try again." },
+    { status: 502 }
+  );
+}
+
+const GTTS_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+  Referer: "https://translate.google.com/",
+};
+const GTTS_CHUNK_LENGTH = 180;
+const GTTS_MAX_CHUNKS = 16;
+
+function splitSpeechChunks(text: string, max: number): string[] {
+  const chunks: string[] = [];
+  let current = "";
+  for (const word of text.split(/\s+/)) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > max) {
+      if (current) chunks.push(current);
+      current = word.slice(0, max);
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.slice(0, GTTS_MAX_CHUNKS);
+}
+
+async function fetchGoogleChunk(chunk: string): Promise<Uint8Array | null> {
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&ttsspeed=1&q=${encodeURIComponent(chunk)}`;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: GTTS_HEADERS });
+      if (response.ok) {
+        const buffer = await response.arrayBuffer();
+        if (buffer.byteLength > 0) return new Uint8Array(buffer);
+      }
+    } catch {
+      // Retry once, then give up.
+    }
+    if (attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+  }
+  return null;
+}
+
+async function googleTtsResponse(text: string): Promise<NextResponse | null> {
+  const chunks = splitSpeechChunks(text, GTTS_CHUNK_LENGTH);
+  if (chunks.length === 0) return null;
+  const parts: Uint8Array[] = [];
+  for (let i = 0; i < chunks.length; i += 1) {
+    const audio = await fetchGoogleChunk(chunks[i]);
+    if (!audio) return null;
+    parts.push(audio);
+    if (i < chunks.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    merged.set(part, offset);
+    offset += part.length;
+  }
+  return new NextResponse(merged, {
     status: 200,
     headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "audio/wav",
+      "Content-Type": "audio/mpeg",
       "Cache-Control": "no-store",
     },
   });
