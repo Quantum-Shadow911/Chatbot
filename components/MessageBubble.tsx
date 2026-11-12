@@ -2,8 +2,10 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import type { Attachment, Message } from "@/lib/types";
+import { splitCanvasSegments, stripCanvasBlocks } from "@/lib/canvas";
 import { formatBytes } from "@/lib/attachments";
 import { formatDate, formatTime } from "@/lib/utils";
+import { CanvasCard, CanvasPendingCard } from "./CanvasCard";
 import { CopyButton } from "./CopyButton";
 import { Markdown } from "./Markdown";
 import { TypingIndicator } from "./TypingIndicator";
@@ -29,6 +31,7 @@ interface MessageBubbleProps {
   canRegenerate: boolean;
   isSpeaking: boolean;
   onSpeakToggle: (message: Message) => void;
+  onOpenCanvas: (artifact: import("@/lib/canvas").CanvasArtifact) => void;
   conversationTitle: string;
   onRegenerate: () => void;
   onEdit: (id: string) => void;
@@ -135,6 +138,7 @@ function MessageBubbleImpl({
   canRegenerate,
   isSpeaking,
   onSpeakToggle,
+  onOpenCanvas,
   conversationTitle,
   onRegenerate,
   onEdit,
@@ -260,8 +264,18 @@ function MessageBubbleImpl({
           ) : message.content === "" && isStreaming && message.reasoning ? (
             <p className="shimmer-text text-xs text-slate-400">Working on it…</p>
           ) : (
-            <div data-message-body={message.id}>
-              <Markdown content={message.content} />
+            <div data-message-body={message.id} className="flex min-w-0 flex-col gap-2">
+              {splitCanvasSegments(message.content).map((segment, segmentIndex) =>
+                segment.kind === "text" ? (
+                  segment.text.trim().length > 0 ? (
+                    <Markdown key={segmentIndex} content={segment.text.trim()} />
+                  ) : null
+                ) : segment.kind === "canvas" ? (
+                  <CanvasCard key={segmentIndex} artifact={segment.artifact} onOpen={onOpenCanvas} />
+                ) : (
+                  <CanvasPendingCard key={segmentIndex} />
+                )
+              )}
             </div>
           )}
         </div>
@@ -273,7 +287,7 @@ function MessageBubbleImpl({
             {formatTime(message.createdAt)}
           </time>
           {!isUser && !message.error && message.content !== "" && (
-            <CopyButton text={message.content} label="" className="!px-1.5" />
+            <CopyButton text={stripCanvasBlocks(message.content) || message.content} label="" className="!px-1.5" />
           )}
           {!isUser && !message.error && message.content !== "" && !isStreaming && (
             <button

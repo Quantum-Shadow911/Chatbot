@@ -238,6 +238,17 @@ body > div {
   }
 }
 
+@keyframes canvas-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes drop-in {
   from {
     opacity: 0;
@@ -384,6 +395,10 @@ body > div {
   animation: drop-in 0.18s ease-out;
 }
 
+.animate-canvas-in {
+  animation: canvas-in 0.28s cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
 .animate-toast-in {
   animation: toast-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1);
 }
@@ -425,6 +440,7 @@ body > div {
   .bubble-streaming .md-content > :last-child::after,
   .animate-fade-in,
   .animate-pop-in,
+  .animate-canvas-in,
   .animate-drop-in,
   .animate-toast-in,
   .animate-float,

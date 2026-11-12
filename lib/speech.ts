@@ -17,6 +17,8 @@ const EMOJI_PATTERN = /[\u{1F000}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{27BF}\
 
 export function stripMarkdownForSpeech(text: string): string {
   return text
+    .replace(/<<<CANVAS[^\n]*\n[\s\S]*?<<<END-CANVAS>>>/g, " Canvas omitted. ")
+    .replace(/<<<CANVAS[\s\S]*$/, "")
     .replace(/```[\s\S]*?(```|$)/g, " Code block omitted. ")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")

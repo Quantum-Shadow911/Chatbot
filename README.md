@@ -16,6 +16,7 @@ A modern, fully functional AI chatbot built with Next.js 15, React 19, TypeScrip
 - **Memory** — important details are extracted after replies and remembered across conversations; view and manage them in Settings → Memory.
 - **Uploads** — images (downscaled client-side, routed to a vision-capable model when needed), text files (contents included in the prompt), and other files via button, drag-and-drop, or paste.
 - **Theming** — light/dark/system theme plus a full-spectrum accent color (presets or custom picker) that drives the UI and the favicon.
+- **Canvas** — the AI can create rich artifacts that open in a side panel: interactive quizzes (with scoring and explanations), polished Markdown documents, self-contained interactive HTML pages, and animated HTML "videos" with replay. Copy or download any canvas.
 - **PDF export** — download any AI reply or the whole conversation as a cleanly formatted PDF.
 - **AI-generated chat titles** — conversations are renamed by the model after the first exchange.
 - **Rich formatting** — Markdown with headings, lists, tables, and syntax-highlighted code blocks.

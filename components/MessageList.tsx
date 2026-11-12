@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "@/lib/types";
+import type { CanvasArtifact } from "@/lib/canvas";
 import { MessageBubble } from "./MessageBubble";
 import { ArrowDownIcon } from "./icons";
 
@@ -11,6 +12,7 @@ interface MessageListProps {
   canRegenerate: boolean;
   speakingId: string | null;
   onSpeakToggle: (message: Message) => void;
+  onOpenCanvas: (artifact: CanvasArtifact) => void;
   conversationTitle: string;
   onRegenerate: () => void;
   onEditResend: (id: string, content: string) => boolean;
@@ -22,6 +24,7 @@ export function MessageList({
   canRegenerate,
   speakingId,
   onSpeakToggle,
+  onOpenCanvas,
   conversationTitle,
   onRegenerate,
   onEditResend,
@@ -87,6 +90,7 @@ export function MessageList({
               canRegenerate={canRegenerate}
               isSpeaking={speakingId === message.id}
               onSpeakToggle={onSpeakToggle}
+              onOpenCanvas={onOpenCanvas}
               conversationTitle={conversationTitle}
               onRegenerate={onRegenerate}
               onEdit={setEditingId}
