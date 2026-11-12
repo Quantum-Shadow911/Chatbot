@@ -17,7 +17,7 @@ function completionsUrl(raw: string): string {
     .replace(/\/+$/, "")
     .replace(/\/chat\/completions$/, "");
   if (/\/v\d+$/.test(base)) return `${base}/chat/completions`;
-  if (/generativelanguage\.googleapis\.com$/.test(base) && /\/openai$/.test(base)) {
+  if (/generativelanguage\.googleapis\.com/.test(base) && /\/openai$/.test(base)) {
     return `${base}/chat/completions`;
   }
   return `${base}/v1/chat/completions`;
