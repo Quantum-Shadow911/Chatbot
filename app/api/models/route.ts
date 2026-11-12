@@ -9,6 +9,8 @@ const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
   .replace(/\/v1$/, "");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
 const VISION_MODEL = (process.env.VISION_MODEL ?? "").trim();
+const VISION_API_KEY = (process.env.VISION_API_KEY ?? "").trim();
+const VISION_FALLBACK = Boolean(VISION_API_KEY && VISION_MODEL);
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const NON_CHAT_PATTERN =
@@ -59,7 +61,7 @@ async function providerModels(apiKey: string): Promise<string[]> {
 
 export async function GET() {
   if (process.env.MISTRAL_MODELS) {
-    return NextResponse.json({ models: envModels(), default: MODEL });
+    return NextResponse.json({ models: envModels(), default: MODEL, visionFallback: VISION_FALLBACK });
   }
 
   const apiKey = process.env.MISTRAL_API_KEY;
@@ -68,11 +70,11 @@ export async function GET() {
       const models = sortModels(
         withVision(Array.from(new Set([MODEL, ...await providerModels(apiKey)])))
       );
-      return NextResponse.json({ models, default: MODEL });
+      return NextResponse.json({ models, default: MODEL, visionFallback: VISION_FALLBACK });
     } catch {
       // Fall through to the single-model default below.
     }
   }
 
-  return NextResponse.json({ models: withVision([MODEL]), default: MODEL });
+  return NextResponse.json({ models: withVision([MODEL]), default: MODEL, visionFallback: VISION_FALLBACK });
 }
