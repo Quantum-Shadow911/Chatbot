@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "@/lib/types";
-import { speak, speechSupported, stopSpeaking } from "@/lib/speech";
+import { speak, stopSpeaking } from "@/lib/speech";
 import {
   createRecognizer,
   speechRecognitionSupported,
@@ -39,6 +39,7 @@ interface LiveModeProps {
   status: ChatStatus;
   lastAssistant: Message | null;
   voice: string | null;
+  naturalVoice: string | null;
   rate: number;
 }
 
@@ -50,6 +51,7 @@ export function LiveMode({
   status,
   lastAssistant,
   voice,
+  naturalVoice,
   rate,
 }: LiveModeProps) {
   const [phase, setPhase] = useState<Phase>("listening");
@@ -180,7 +182,6 @@ export function LiveMode({
       last &&
       !last.error &&
       last.content &&
-      speechSupported() &&
       spokenIdRef.current !== last.id
     ) {
       spokenIdRef.current = last.id;
@@ -188,6 +189,7 @@ export function LiveMode({
       stopMic();
       const started = speak(last.content, {
         voiceURI: voice,
+        naturalVoice,
         rate,
         onEnd: resumeListening,
       });
