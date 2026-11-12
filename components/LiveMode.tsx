@@ -38,9 +38,7 @@ interface LiveModeProps {
   onStop: () => void;
   status: ChatStatus;
   lastAssistant: Message | null;
-  voice: string | null;
   naturalVoice: string | null;
-  rate: number;
 }
 
 export function LiveMode({
@@ -50,9 +48,7 @@ export function LiveMode({
   onStop,
   status,
   lastAssistant,
-  voice,
   naturalVoice,
-  rate,
 }: LiveModeProps) {
   const [phase, setPhase] = useState<Phase>("listening");
   const [interim, setInterim] = useState("");
@@ -188,9 +184,7 @@ export function LiveMode({
       applyPhase("speaking");
       stopMic();
       const started = speak(last.content, {
-        voiceURI: voice,
         naturalVoice,
-        rate,
         onEnd: resumeListening,
       });
       if (!started) resumeListening();
@@ -203,8 +197,6 @@ export function LiveMode({
     open,
     status,
     lastAssistant,
-    voice,
-    rate,
     applyPhase,
     resumeListening,
     startMic,
