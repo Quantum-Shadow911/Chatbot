@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, type Settings, type ThemeMode } from "@/lib/theme";
 import type { MemoryItem } from "@/lib/memory";
+import { listVoices, onVoicesChanged, speak, speechSupported, stopSpeaking, type VoiceOption } from "@/lib/speech";
 import {
   CheckIcon,
   CloseIcon,
@@ -32,15 +33,19 @@ interface SettingsModalProps {
   settings: Settings;
   onThemeChange: (theme: ThemeMode) => void;
   onAccentChange: (accent: string | null) => void;
+  onReadAloudChange: (enabled: boolean) => void;
+  onVoiceChange: (voice: string | null) => void;
+  onVoiceRateChange: (rate: number) => void;
   memory: MemorySettings;
   dataControls: DataControls;
   onClose: () => void;
 }
 
-type SettingsTab = "general" | "memory" | "data";
+type SettingsTab = "general" | "voice" | "memory" | "data";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "general", label: "General" },
+  { id: "voice", label: "Voice" },
   { id: "memory", label: "Memory" },
   { id: "data", label: "Data controls" },
 ];
@@ -66,6 +71,9 @@ export function SettingsModal({
   settings,
   onThemeChange,
   onAccentChange,
+  onReadAloudChange,
+  onVoiceChange,
+  onVoiceRateChange,
   memory,
   dataControls,
   onClose,
@@ -73,6 +81,18 @@ export function SettingsModal({
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<SettingsTab>("general");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const supported = speechSupported();
+
+  useEffect(() => {
+    const refresh = () => setVoices(listVoices());
+    refresh();
+    return onVoicesChanged(refresh);
+  }, []);
+
+  useEffect(() => {
+    return () => stopSpeaking();
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -230,6 +250,109 @@ export function SettingsModal({
                 )}
               </section>
             </>
+          )}
+
+          {tab === "voice" && (
+            <section aria-labelledby="settings-voice-label">
+              <SectionHeading id="settings-voice-label">Voice</SectionHeading>
+              {!supported ? (
+                <p className="mt-3 rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2.5 text-xs leading-relaxed text-slate-400">
+                  Your browser doesn’t support speech. Try Chrome, Edge, or Safari.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                    Have replies read aloud. Pick a voice and speed — press the
+                    speaker button under any reply to hear it.
+                  </p>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-300">
+                      Read replies aloud automatically
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={settings.readAloud}
+                      aria-label="Toggle read aloud"
+                      onClick={() => onReadAloudChange(!settings.readAloud)}
+                      className="relative h-5 w-9 shrink-0 rounded-full border border-white/10 transition-colors"
+                      style={{
+                        backgroundColor: settings.readAloud
+                          ? "var(--accent)"
+                          : "rgba(255, 255, 255, 0.12)",
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-all"
+                        style={{ left: settings.readAloud ? "1.25rem" : "0.125rem" }}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="mt-5">
+                    <label
+                      htmlFor="settings-voice-select"
+                      className="text-xs font-medium text-slate-300"
+                    >
+                      Voice
+                    </label>
+                    <select
+                      id="settings-voice-select"
+                      value={settings.voice ?? ""}
+                      onChange={(event) =>
+                        onVoiceChange(event.target.value === "" ? null : event.target.value)
+                      }
+                      className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm text-slate-200 outline-none transition-all focus:border-indigo-400/60 focus:shadow-[0_0_0_3px_var(--accent-badge-bg)]"
+                    >
+                      <option value="">Default voice</option>
+                      {voices.map((voice) => (
+                        <option key={voice.uri} value={voice.uri}>
+                          {voice.name} ({voice.lang})
+                        </option>
+                      ))}
+                    </select>
+                    {voices.length === 0 && (
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Loading voices…
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-5">
+                    <label
+                      htmlFor="settings-voice-rate"
+                      className="text-xs font-medium text-slate-300"
+                    >
+                      Speed: {settings.voiceRate.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}×
+                    </label>
+                    <input
+                      id="settings-voice-rate"
+                      type="range"
+                      min={0.5}
+                      max={2}
+                      step={0.05}
+                      value={settings.voiceRate}
+                      onChange={(event) => onVoiceRateChange(Number(event.target.value))}
+                      className="mt-2 w-full accent-[var(--accent)]"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      speak("Hey! This is how I will sound when I read replies aloud.", {
+                        voiceURI: settings.voice,
+                        rate: settings.voiceRate,
+                      })
+                    }
+                    className="mt-5 rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-200 transition-all hover:border-white/20 hover:bg-slate-700/80"
+                  >
+                    Preview voice
+                  </button>
+                </>
+              )}
+            </section>
           )}
 
           {tab === "memory" && (

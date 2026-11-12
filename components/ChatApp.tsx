@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
+import { speak, speechSupported, stopSpeaking } from "@/lib/speech";
 import { supportsVision } from "@/lib/vision";
-import type { AuthProviderInfo, SessionInfo } from "@/lib/types";
+import type { AuthProviderInfo, Message, SessionInfo } from "@/lib/types";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { ModelPicker } from "./ModelPicker";
@@ -40,9 +41,20 @@ interface AvailableModels {
 
 export function ChatApp() {
   const { memories, addMemories, removeMemory, clearMemories } = useMemory();
-  const { settings, setTheme, setAccent, setMemoryEnabled, setModel } = useSettings();
+  const {
+    settings,
+    setTheme,
+    setAccent,
+    setMemoryEnabled,
+    setModel,
+    setReadAloud,
+    setVoice,
+    setVoiceRate,
+  } = useSettings();
   const memoryRef = useRef(memories);
   memoryRef.current = memories;
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const memoryEnabled = settings.memoryEnabled;
   const [memoryNotice, setMemoryNotice] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,6 +62,39 @@ export function ChatApp() {
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [authProviders, setAuthProviders] = useState<AuthProviderInfo[]>([]);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const speakingIdRef = useRef<string | null>(null);
+
+  const clearSpeech = useCallback(() => {
+    stopSpeaking();
+    speakingIdRef.current = null;
+    setSpeakingId(null);
+  }, []);
+
+  const startSpeech = useCallback((message: Message) => {
+    const { voice, voiceRate } = settingsRef.current;
+    const started = speak(message.content, {
+      voiceURI: voice,
+      rate: voiceRate,
+      onEnd: () => {
+        speakingIdRef.current = null;
+        setSpeakingId(null);
+      },
+    });
+    speakingIdRef.current = started ? message.id : null;
+    setSpeakingId(speakingIdRef.current);
+  }, []);
+
+  const handleSpeakToggle = useCallback(
+    (message: Message) => {
+      if (speakingIdRef.current === message.id) {
+        clearSpeech();
+        return;
+      }
+      startSpeech(message);
+    },
+    [clearSpeech, startSpeech]
+  );
 
   const handleMemoriesExtracted = useCallback(
     (facts: string[]) => {
@@ -69,6 +114,21 @@ export function ChatApp() {
     getModel: () => settings.model,
     onMemoriesExtracted: handleMemoriesExtracted,
   });
+
+  const prevStatusRef = useRef(chat.status);
+  useEffect(() => {
+    const previous = prevStatusRef.current;
+    prevStatusRef.current = chat.status;
+    if (chat.status === "loading") clearSpeech();
+    if (previous !== "streaming" || chat.status !== "idle") return;
+    if (!speechSupported()) return;
+    if (!settingsRef.current.readAloud) return;
+    const last = chat.activeConversation?.messages.at(-1);
+    if (!last || last.role !== "assistant" || last.error || !last.content) return;
+    startSpeech(last);
+  }, [chat.status, chat.activeConversation, clearSpeech, startSpeech]);
+
+  useEffect(() => clearSpeech, [clearSpeech]);
 
   useEffect(() => {
     if (!memoryNotice) return;
@@ -297,6 +357,8 @@ export function ChatApp() {
             messages={messages}
             status={chat.status}
             canRegenerate={chat.status === "idle"}
+            speakingId={speakingId}
+            onSpeakToggle={handleSpeakToggle}
             onRegenerate={chat.regenerate}
             onEditResend={handleEditResend}
           />
@@ -321,6 +383,9 @@ export function ChatApp() {
           settings={settings}
           onThemeChange={setTheme}
           onAccentChange={setAccent}
+          onReadAloudChange={setReadAloud}
+          onVoiceChange={setVoice}
+          onVoiceRateChange={setVoiceRate}
           memory={{
             enabled: memoryEnabled,
             items: memories,

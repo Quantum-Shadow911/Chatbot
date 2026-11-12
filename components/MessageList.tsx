@@ -9,6 +9,8 @@ interface MessageListProps {
   messages: Message[];
   status: "idle" | "loading" | "streaming";
   canRegenerate: boolean;
+  speakingId: string | null;
+  onSpeakToggle: (message: Message) => void;
   onRegenerate: () => void;
   onEditResend: (id: string, content: string) => boolean;
 }
@@ -17,6 +19,8 @@ export function MessageList({
   messages,
   status,
   canRegenerate,
+  speakingId,
+  onSpeakToggle,
   onRegenerate,
   onEditResend,
 }: MessageListProps) {
@@ -78,6 +82,8 @@ export function MessageList({
               isLastAssistant={message.id === lastAssistantId}
               isEditing={editingId === message.id}
               canRegenerate={canRegenerate}
+              isSpeaking={speakingId === message.id}
+              onSpeakToggle={onSpeakToggle}
               onRegenerate={onRegenerate}
               onEdit={setEditingId}
               onCancelEdit={() => setEditingId(null)}

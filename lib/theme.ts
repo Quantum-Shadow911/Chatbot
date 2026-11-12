@@ -5,6 +5,9 @@ export interface Settings {
   accent: string | null;
   memoryEnabled: boolean;
   model: string | null;
+  readAloud: boolean;
+  voice: string | null;
+  voiceRate: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -12,6 +15,9 @@ export const DEFAULT_SETTINGS: Settings = {
   accent: null,
   memoryEnabled: true,
   model: null,
+  readAloud: false,
+  voice: null,
+  voiceRate: 1,
 };
 export const DEFAULT_ACCENT = "#6366f1";
 
@@ -61,6 +67,22 @@ export function normalizeSettings(value: unknown): Settings {
       raw.model.length <= 100
         ? raw.model.trim()
         : null,
+    readAloud:
+      typeof raw.readAloud === "boolean"
+        ? raw.readAloud
+        : DEFAULT_SETTINGS.readAloud,
+    voice:
+      typeof raw.voice === "string" &&
+      raw.voice.length > 0 &&
+      raw.voice.length <= 200
+        ? raw.voice
+        : null,
+    voiceRate:
+      typeof raw.voiceRate === "number" &&
+      raw.voiceRate >= 0.5 &&
+      raw.voiceRate <= 2
+        ? raw.voiceRate
+        : DEFAULT_SETTINGS.voiceRate,
   };
 }
 

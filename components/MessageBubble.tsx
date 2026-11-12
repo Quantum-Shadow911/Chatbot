@@ -7,7 +7,7 @@ import { formatTime } from "@/lib/utils";
 import { CopyButton } from "./CopyButton";
 import { Markdown } from "./Markdown";
 import { TypingIndicator } from "./TypingIndicator";
-import { AlertIcon, BotIcon, EditIcon, FileIcon, ImageIcon, RefreshIcon } from "./icons";
+import { AlertIcon, BotIcon, EditIcon, FileIcon, ImageIcon, RefreshIcon, SpeakerIcon, StopIcon } from "./icons";
 
 interface MessageBubbleProps {
   message: Message;
@@ -15,6 +15,8 @@ interface MessageBubbleProps {
   isLastAssistant: boolean;
   isEditing: boolean;
   canRegenerate: boolean;
+  isSpeaking: boolean;
+  onSpeakToggle: (message: Message) => void;
   onRegenerate: () => void;
   onEdit: (id: string) => void;
   onCancelEdit: () => void;
@@ -74,6 +76,8 @@ function MessageBubbleImpl({
   isLastAssistant,
   isEditing,
   canRegenerate,
+  isSpeaking,
+  onSpeakToggle,
   onRegenerate,
   onEdit,
   onCancelEdit,
@@ -200,6 +204,21 @@ function MessageBubbleImpl({
           </time>
           {!isUser && !message.error && message.content !== "" && (
             <CopyButton text={message.content} label="" className="!px-1.5" />
+          )}
+          {!isUser && !message.error && message.content !== "" && !isStreaming && (
+            <button
+              type="button"
+              onClick={() => onSpeakToggle(message)}
+              aria-label={isSpeaking ? "Stop reading aloud" : "Read aloud"}
+              title={isSpeaking ? "Stop reading" : "Read aloud"}
+              className="rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
+            >
+              {isSpeaking ? (
+                <StopIcon width={13} height={13} />
+              ) : (
+                <SpeakerIcon width={13} height={13} />
+              )}
+            </button>
           )}
           {isUser && !isStreaming && (
             <button

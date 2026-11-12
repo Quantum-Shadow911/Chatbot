@@ -43,5 +43,27 @@ export function useSettings() {
     setSettings((current) => ({ ...current, model }));
   }, []);
 
-  return { settings, hydrated, setTheme, setAccent, setMemoryEnabled, setModel };
+  const setReadAloud = useCallback((readAloud: boolean) => {
+    setSettings((current) => ({ ...current, readAloud }));
+  }, []);
+
+  const setVoice = useCallback((voice: string | null) => {
+    setSettings((current) => ({ ...current, voice }));
+  }, []);
+
+  const setVoiceRate = useCallback((voiceRate: number) => {
+    setSettings((current) => ({ ...current, voiceRate }));
+  }, []);
+
+  return {
+    settings,
+    hydrated,
+    setTheme,
+    setAccent,
+    setMemoryEnabled,
+    setModel,
+    setReadAloud,
+    setVoice,
+    setVoiceRate,
+  };
 }
