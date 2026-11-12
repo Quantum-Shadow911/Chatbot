@@ -95,6 +95,37 @@ function touch(conversation: Conversation): Conversation {
   return { ...conversation, updatedAt: Date.now() };
 }
 
+async function generateTitle(
+  history: Message[],
+  assistantContent: string
+): Promise<string | null> {
+  const firstUser = history.find((m) => m.role === "user");
+  if (!firstUser || assistantContent.trim().length === 0) return null;
+  try {
+    const response = await fetch("/api/title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: buildTextWithAttachments(firstUser).slice(0, 4_000),
+          },
+          { role: "assistant", content: assistantContent.slice(0, 4_000) },
+        ],
+      }),
+    });
+    if (!response.ok) return null;
+    const data: unknown = await response.json();
+    if (typeof data !== "object" || data === null) return null;
+    const title = (data as Record<string, unknown>).title;
+    if (typeof title !== "string" || title.trim().length === 0) return null;
+    return title.slice(0, 60);
+  } catch {
+    return null;
+  }
+}
+
 async function extractMemories(
   history: Message[],
   assistantContent: string,
@@ -399,6 +430,21 @@ export function useChat(options: UseChatOptions = {}) {
         dispatch({ type: "END_STREAM" });
         if (assistantContent.trim().length > 0) {
           void extractMemories(history, assistantContent, optionsRef.current);
+          const conversation = stateRef.current.conversations.find(
+            (c) => c.id === conversationId
+          );
+          const firstUser = history.find((m) => m.role === "user");
+          if (
+            conversation &&
+            firstUser &&
+            conversation.title === titleFromContent(firstUser.content)
+          ) {
+            void generateTitle(history, assistantContent).then((title) => {
+              if (title) {
+                dispatch({ type: "RENAME", id: conversationId, title });
+              }
+            });
+          }
         }
       } catch (error) {
         dispatch({ type: "END_STREAM" });
