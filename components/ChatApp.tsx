@@ -5,6 +5,7 @@ import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
 import { supportsVision } from "@/lib/vision";
+import type { AuthProviderInfo, SessionInfo } from "@/lib/types";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { ModelPicker } from "./ModelPicker";
@@ -47,6 +48,8 @@ export function ChatApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
+  const [session, setSession] = useState<SessionInfo | null>(null);
+  const [authProviders, setAuthProviders] = useState<AuthProviderInfo[]>([]);
 
   const handleMemoriesExtracted = useCallback(
     (facts: string[]) => {
@@ -93,6 +96,60 @@ export function ChatApp() {
       .catch(() => {
         // Model picker is optional; keep the default when unavailable.
       });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const [sessionRes, providersRes] = await Promise.all([
+          fetch("/api/auth/session"),
+          fetch("/api/auth/providers"),
+        ]);
+        if (cancelled) return;
+        if (providersRes.ok) {
+          const data: unknown = await providersRes.json();
+          if (typeof data === "object" && data !== null) {
+            const providers = Object.values(
+              data as Record<string, Record<string, unknown>>
+            )
+              .filter(
+                (provider) =>
+                  typeof provider.id === "string" &&
+                  typeof provider.name === "string"
+              )
+              .map((provider) => ({
+                id: provider.id as string,
+                name: provider.name as string,
+              }));
+            setAuthProviders(providers);
+          }
+        }
+        if (sessionRes.ok) {
+          const data: unknown = await sessionRes.json();
+          if (typeof data === "object" && data !== null) {
+            const user = (data as Record<string, Record<string, unknown>>).user;
+            if (
+              typeof user === "object" &&
+              user !== null &&
+              typeof user.name === "string"
+            ) {
+              setSession({
+                name: user.name as string,
+                email: typeof user.email === "string" ? (user.email as string) : null,
+                image: typeof user.image === "string" ? (user.image as string) : null,
+              });
+            }
+          }
+        }
+      } catch {
+        // Auth is optional; stay signed out when unavailable.
+      }
+    };
+    void load();
     return () => {
       cancelled = true;
     };
@@ -162,6 +219,8 @@ export function ChatApp() {
         onSelect={chat.selectConversation}
         onRename={chat.renameConversation}
         onDelete={chat.deleteConversation}
+        session={session}
+        providers={authProviders}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
