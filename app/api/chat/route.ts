@@ -4,18 +4,27 @@ import { supportsVision } from "@/lib/vision";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
-  .trim()
-  .replace(/\/+$/, "")
-  .replace(/\/v1$/, "");
+const API_URL = normalizeBase(process.env.MISTRAL_API_URL ?? "https://api.mistral.ai");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
 const VISION_MODEL = (process.env.VISION_MODEL ?? "").trim();
 const VISION_API_KEY = (process.env.VISION_API_KEY ?? "").trim();
-const VISION_API_URL = (process.env.VISION_API_URL ?? "https://api.mistral.ai")
-  .trim()
-  .replace(/\/+$/, "")
-  .replace(/\/v1$/, "");
+const VISION_API_URL = normalizeBase(
+  process.env.VISION_API_URL ?? "https://api.mistral.ai"
+);
 const MODEL_PATTERN = /^[A-Za-z0-9._:/-]{1,100}$/;
+
+function normalizeBase(url: string): string {
+  return url
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/v1$/, "")
+    .replace(/\/chat\/completions$/, "");
+}
+
+function completionsUrl(base: string): string {
+  if (/\/(v\d+|openai)$/.test(base)) return `${base}/chat/completions`;
+  return `${base}/v1/chat/completions`;
+}
 
 function parseModel(raw: unknown): string {
   if (typeof raw !== "string") return MODEL;
@@ -196,7 +205,7 @@ export async function POST(request: NextRequest) {
       Array.isArray(m.content) &&
       m.content.some((part) => part.type === "image_url")
   );
-  let targetUrl = `${API_URL}/v1/chat/completions`;
+  let targetUrl = completionsUrl(API_URL);
   let targetKey = apiKey;
   let targetModel = model;
   if (
@@ -205,7 +214,7 @@ export async function POST(request: NextRequest) {
     VISION_API_KEY &&
     VISION_MODEL
   ) {
-    targetUrl = `${VISION_API_URL}/v1/chat/completions`;
+    targetUrl = completionsUrl(VISION_API_URL);
     targetKey = VISION_API_KEY;
     targetModel = VISION_MODEL;
   }
