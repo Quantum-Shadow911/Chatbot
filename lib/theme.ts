@@ -153,6 +153,36 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+export function applyFavicon(accent: string): void {
+  if (typeof document === "undefined") return;
+  const light = shift(accent, 8);
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset="0" stop-color="${light}"/><stop offset="1" stop-color="${accent}"/>` +
+    `</linearGradient></defs>` +
+    `<rect width="64" height="64" rx="14" fill="#020617"/>` +
+    `<path d="M32 12c-11.05 0-20 7.83-20 17.5 0 5.51 2.93 10.43 7.5 13.68V54l8.09-4.44c1.42.29 2.89.44 4.41.44 11.05 0 20-7.83 20-17.5S43.05 12 32 12Z" fill="url(#g)"/>` +
+    `<circle cx="23" cy="29.5" r="3" fill="#020617"/>` +
+    `<circle cx="32" cy="29.5" r="3" fill="#020617"/>` +
+    `<circle cx="41" cy="29.5" r="3" fill="#020617"/></svg>`;
+  const href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  let link = document.querySelector<HTMLLinkElement>(
+    "link[rel='icon'][data-dynamic-accent]"
+  );
+  if (!link) {
+    document
+      .querySelectorAll<HTMLLinkElement>("link[rel='icon']:not([data-dynamic-accent])")
+      .forEach((existing) => existing.remove());
+    link = document.createElement("link");
+    link.rel = "icon";
+    link.type = "image/svg+xml";
+    link.setAttribute("data-dynamic-accent", "");
+    document.head.appendChild(link);
+  }
+  if (link.href !== href) link.href = href;
+}
+
 export function applyTheme(settings: Settings): void {
   if (typeof window === "undefined") return;
   const root = document.documentElement;
@@ -169,4 +199,5 @@ export function applyTheme(settings: Settings): void {
   root.style.setProperty("--accent-text", dark ? shift(accent, 26, -5) : shift(accent, -22, 5));
   root.style.setProperty("--accent-border", withAlpha(accent, dark ? 0.4 : 0.45));
   root.style.setProperty("--accent-badge-bg", withAlpha(accent, dark ? 0.12 : 0.1));
+  applyFavicon(accent);
 }
