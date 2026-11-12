@@ -34,6 +34,7 @@ const SUGGESTIONS: { title: string; prompt: string }[] = [
 interface AvailableModels {
   models: string[];
   default: string;
+  visionFallback: boolean;
 }
 
 export function ChatApp() {
@@ -85,6 +86,8 @@ export function ChatApp() {
           models: models.filter((m): m is string => typeof m === "string"),
           default:
             typeof fallback === "string" ? fallback : (models[0] as string),
+          visionFallback:
+            (data as Record<string, unknown>).visionFallback === true,
         });
       })
       .catch(() => {
@@ -244,7 +247,10 @@ export function ChatApp() {
           busy={busy}
           onSend={chat.sendMessage}
           onStop={chat.stopGeneration}
-          modelSupportsImages={supportsVision(currentModel || null)}
+          modelSupportsImages={
+            supportsVision(currentModel || null) ||
+            (availableModels?.visionFallback ?? false)
+          }
         />
         <p className="bg-slate-950 pb-2 text-center text-[11px] text-slate-500">
           AI can make mistakes. Check important info.
