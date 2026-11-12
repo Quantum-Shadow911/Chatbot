@@ -213,7 +213,11 @@ export async function POST(request: NextRequest) {
       const data: unknown = await upstream.json();
       detail = extractDetail(data);
     } catch {
-      // Keep the generic message.
+      try {
+        detail = (await upstream.text()).slice(0, 200);
+      } catch {
+        // Keep the generic message.
+      }
     }
 
     if (upstream.status === 429) {
@@ -228,11 +232,20 @@ export async function POST(request: NextRequest) {
         "The AI service rejected the server credentials. Check the configured API key."
       );
     }
+    const hasImages = messages.some(
+      (m) =>
+        Array.isArray(m.content) &&
+        m.content.some((part) => part.type === "image_url")
+    );
+    const imageHint =
+      hasImages && !detail
+        ? " The selected model may not support image input — pick a vision-capable model from the header dropdown and try again."
+        : "";
     return errorResponse(
       502,
       detail
-        ? `The AI service returned an error: ${detail}`
-        : "The AI service returned an unexpected error. Please try again."
+        ? `The AI service returned an error: ${detail}${imageHint}`
+        : `The AI service returned an unexpected error. Please try again.${imageHint}`
     );
   }
 

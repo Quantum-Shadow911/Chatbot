@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
+import { supportsVision } from "@/lib/vision";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { ModelPicker } from "./ModelPicker";
@@ -239,7 +240,12 @@ export function ChatApp() {
           />
         )}
 
-        <Composer busy={busy} onSend={chat.sendMessage} onStop={chat.stopGeneration} />
+        <Composer
+          busy={busy}
+          onSend={chat.sendMessage}
+          onStop={chat.stopGeneration}
+          modelSupportsImages={supportsVision(currentModel || null)}
+        />
         <p className="bg-slate-950 pb-2 text-center text-[11px] text-slate-500">
           AI can make mistakes. Check important info.
         </p>
