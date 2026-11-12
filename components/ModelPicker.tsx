@@ -9,11 +9,37 @@ interface ModelPickerProps {
   onSelect: (model: string) => void;
 }
 
+const TOKEN_FIXES: Record<string, string> = {
+  gpt: "GPT",
+  ai: "AI",
+  oss: "OSS",
+  llm: "LLM",
+  vlm: "VLM",
+  tts: "TTS",
+  r1: "R1",
+  v3: "V3",
+  k2: "K2",
+  "4b": "4B",
+  "9b": "9B",
+  "12b": "12B",
+  "17b": "17B",
+  "32b": "32B",
+  "120b": "120B",
+  "2409": "",
+  "2407": "",
+  "2501": "",
+  "2503": "",
+  "2505": "",
+  "2507": "",
+};
+
 function displayName(model: string): string {
-  return model
+  const id = model.split("/").pop() ?? model;
+  return id
     .split("-")
     .filter((part) => part !== "latest")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => TOKEN_FIXES[part] ?? part.charAt(0).toUpperCase() + part.slice(1))
+    .filter(Boolean)
     .join(" ");
 }
 

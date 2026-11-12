@@ -34,11 +34,45 @@ function speechUrl(raw: string): string {
   return `${base}/v1/audio/speech`;
 }
 
+const GROQ_PROBE_TTL_MS = 10 * 60 * 1000;
+let groqProbe: { at: number; ready: boolean } | null = null;
+
+async function probeGroqReady(): Promise<boolean> {
+  if (!TTS_API_URL || !TTS_API_KEY) return false;
+  if (groqProbe && Date.now() - groqProbe.at < GROQ_PROBE_TTL_MS) {
+    return groqProbe.ready;
+  }
+  let ready = false;
+  try {
+    const response = await fetch(speechUrl(TTS_API_URL), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${TTS_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: TTS_MODEL,
+        input: "Hi.",
+        voice: DEFAULT_VOICE,
+        response_format: "wav",
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    ready = response.ok;
+    await response.body?.cancel().catch(() => {});
+  } catch {
+    ready = false;
+  }
+  groqProbe = { at: Date.now(), ready };
+  return ready;
+}
+
 export async function GET() {
+  const groqReady = await probeGroqReady();
   return NextResponse.json(
     {
       available: true,
-      groqReady: Boolean(TTS_API_URL && TTS_API_KEY),
+      groqReady,
       model: TTS_MODEL,
       voices: VOICES,
       default: DEFAULT_VOICE,
