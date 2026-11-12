@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supportsVision } from "@/lib/vision";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,12 @@ const API_URL = (process.env.MISTRAL_API_URL ?? "https://api.mistral.ai")
   .replace(/\/+$/, "")
   .replace(/\/v1$/, "");
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
+const VISION_MODEL = (process.env.VISION_MODEL ?? "").trim();
+const VISION_API_KEY = (process.env.VISION_API_KEY ?? "").trim();
+const VISION_API_URL = (process.env.VISION_API_URL ?? "https://api.mistral.ai")
+  .trim()
+  .replace(/\/+$/, "")
+  .replace(/\/v1$/, "");
 const MODEL_PATTERN = /^[A-Za-z0-9._:/-]{1,100}$/;
 
 function parseModel(raw: unknown): string {
@@ -184,15 +191,33 @@ export async function POST(request: NextRequest) {
   );
 
   let upstream: Response;
+  const hasImages = messages.some(
+    (m) =>
+      Array.isArray(m.content) &&
+      m.content.some((part) => part.type === "image_url")
+  );
+  let targetUrl = `${API_URL}/v1/chat/completions`;
+  let targetKey = apiKey;
+  let targetModel = model;
+  if (
+    hasImages &&
+    !supportsVision(model) &&
+    VISION_API_KEY &&
+    VISION_MODEL
+  ) {
+    targetUrl = `${VISION_API_URL}/v1/chat/completions`;
+    targetKey = VISION_API_KEY;
+    targetModel = VISION_MODEL;
+  }
   try {
-    upstream = await fetch(`${API_URL}/v1/chat/completions`, {
+    upstream = await fetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${targetKey}`,
       },
       body: JSON.stringify({
-        model,
+        model: targetModel,
         messages: [
           { role: "system", content: buildSystemMessage(memories) },
           ...messages,
@@ -232,11 +257,6 @@ export async function POST(request: NextRequest) {
         "The AI service rejected the server credentials. Check the configured API key."
       );
     }
-    const hasImages = messages.some(
-      (m) =>
-        Array.isArray(m.content) &&
-        m.content.some((part) => part.type === "image_url")
-    );
     const imageHint =
       hasImages && !detail
         ? " The selected model may not support image input — pick a vision-capable model from the header dropdown and try again."

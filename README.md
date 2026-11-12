@@ -53,6 +53,27 @@ npm start
 | `MISTRAL_API_KEY`  | — (required)             | Server-side API key for your provider      |
 | `MISTRAL_API_URL`  | `https://api.mistral.ai` | API base URL of your provider              |
 | `MISTRAL_MODEL`    | `mistral-small-latest`   | Chat model to use                          |
+| `MISTRAL_MODELS`   | — (optional)             | Comma-separated extra models for the header picker (auto-discovered from the provider when unset) |
+| `VISION_API_KEY`   | — (optional)             | API key for the vision fallback provider   |
+| `VISION_MODEL`     | — (optional)             | Vision-capable model for image messages    |
+| `VISION_API_URL`   | `https://api.mistral.ai` | API base URL of the vision fallback        |
+
+### Image understanding (vision fallback)
+
+If your main provider has no vision-capable model (e.g. Groq's text-only
+catalog), add a vision fallback and image messages are routed there
+automatically while everything else keeps using your main provider:
+
+```bash
+# e.g. Mistral's Pixtral — https://console.mistral.ai/api-keys
+VISION_API_KEY=your_mistral_key
+VISION_MODEL=pixtral-12b-2409
+# VISION_API_URL=https://api.mistral.ai  (default)
+```
+
+The header model picker lists your provider's catalog (auto-discovered via
+`/v1/models`) plus the vision model. Image uploads are downscaled client-side
+and sent as OpenAI-style `image_url` parts.
 
 ### Using a different provider
 
