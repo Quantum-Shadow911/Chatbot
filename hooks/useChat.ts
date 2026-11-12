@@ -41,6 +41,7 @@ type Action =
   | { type: "DELETE"; id: string }
   | { type: "ADD_MESSAGE"; conversationId: string; message: Message }
   | { type: "APPEND_DELTA"; conversationId: string; messageId: string; delta: string }
+  | { type: "APPEND_REASONING"; conversationId: string; messageId: string; delta: string }
   | { type: "SET_MESSAGE_ERROR"; conversationId: string; messageId: string; error: string }
   | { type: "SET_STATUS"; status: Status }
   | { type: "END_STREAM" }
@@ -229,6 +230,15 @@ function reducer(state: ChatState, action: Action): ChatState {
           m.id === action.messageId ? { ...m, content: m.content + action.delta } : m
         ),
       }));
+    case "APPEND_REASONING":
+      return mapConversation(state, action.conversationId, (c) => ({
+        ...c,
+        messages: c.messages.map((m) =>
+          m.id === action.messageId
+            ? { ...m, reasoning: (m.reasoning ?? "") + action.delta }
+            : m
+        ),
+      }));
     case "SET_MESSAGE_ERROR":
       return mapConversation(state, action.conversationId, (c) => ({
         ...c,
@@ -379,6 +389,7 @@ export function useChat(options: UseChatOptions = {}) {
         const decoder = new TextDecoder();
         let buffer = "";
         let assistantContent = "";
+        let assistantReasoning = "";
 
         const handleEvent = (data: string) => {
           if (data === "[DONE]") return;
@@ -404,6 +415,19 @@ export function useChat(options: UseChatOptions = {}) {
                     conversationId,
                     messageId: assistantId,
                     delta: delta.content,
+                  });
+                }
+                if (
+                  typeof delta.reasoning === "string" &&
+                  delta.reasoning.length > 0 &&
+                  assistantReasoning.length < 60_000
+                ) {
+                  assistantReasoning += delta.reasoning;
+                  dispatch({
+                    type: "APPEND_REASONING",
+                    conversationId,
+                    messageId: assistantId,
+                    delta: delta.reasoning,
                   });
                 }
               }

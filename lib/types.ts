@@ -18,6 +18,7 @@ export interface Message {
   content: string;
   createdAt: number;
   error?: boolean;
+  reasoning?: string;
   attachments?: Attachment[];
 }
 
