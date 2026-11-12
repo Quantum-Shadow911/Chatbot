@@ -59,6 +59,7 @@ export function LiveMode({
 
   const openRef = useRef(false);
   const statusRef = useRef(status);
+  const onStopRef = useRef(onStop);
   const phaseRef = useRef<Phase>("listening");
   const spokenIdRef = useRef<string | null>(null);
   const pendingRef = useRef("");
@@ -118,6 +119,9 @@ export function LiveMode({
   const flushRef = useRef<() => void>(() => {});
 
   const handleFinalRef = useRef<(text: string) => void>(() => {});
+  const handleInterimRef = useRef<(text: string) => void>(() => {});
+
+  onStopRef.current = onStop;
 
   useEffect(() => {
     if (!open) return;
@@ -141,9 +145,7 @@ export function LiveMode({
 
     const recognizer = createRecognizer({
       onFinal: (text) => handleFinalRef.current(text),
-      onInterim: (text) => {
-        if (openRef.current && phaseRef.current !== "speaking") setInterim(text);
-      },
+      onInterim: (text) => handleInterimRef.current(text),
       onError: (message) => {
         if (openRef.current) setError(message);
       },
@@ -171,11 +173,24 @@ export function LiveMode({
   }, [open, applyPhase]);
 
   useEffect(() => {
-    handleFinalRef.current = (text: string) => {
+    const bargeIn = () => {
+      if (Date.now() - speakStartRef.current < 800) return false;
+      stopSpeaking();
+      applyPhase("listening");
+      return true;
+    };
+    handleInterimRef.current = (text: string) => {
       if (!openRef.current) return;
       if (phaseRef.current === "speaking") {
-        if (Date.now() - speakStartRef.current < 800) return;
-        stopSpeaking();
+        if (text.trim().length < 3 || !bargeIn()) return;
+      }
+      setInterim(text);
+    };
+    handleFinalRef.current = (text: string) => {
+      if (!openRef.current) return;
+      if (phaseRef.current === "speaking" && !bargeIn()) return;
+      if (statusRef.current !== "idle") {
+        onStopRef.current();
         applyPhase("listening");
       }
       pendingRef.current = `${pendingRef.current} ${text}`.trim();
@@ -219,7 +234,8 @@ export function LiveMode({
       last &&
       !last.error &&
       last.content &&
-      spokenIdRef.current !== last.id
+      spokenIdRef.current !== last.id &&
+      !pendingRef.current
     ) {
       spokenIdRef.current = last.id;
       applyPhase("speaking");
