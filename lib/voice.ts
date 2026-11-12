@@ -164,3 +164,79 @@ export function createRecognizer(handlers: RecognizerHandlers): Recognizer {
     },
   };
 }
+
+export interface MicMeter {
+  start: () => Promise<boolean>;
+  stop: () => void;
+}
+
+export function createMicMeter(onLevel: (level: number) => void): MicMeter | null {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    return null;
+  }
+
+  let stream: MediaStream | null = null;
+  let context: AudioContext | null = null;
+  let analyser: AnalyserNode | null = null;
+  let frame = 0;
+  let running = false;
+
+  const tick = () => {
+    if (!running || !analyser) return;
+    const data = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 1) {
+      const v = (data[i] - 128) / 128;
+      sum += v * v;
+    }
+    const rms = Math.sqrt(sum / data.length);
+    onLevel(Math.min(1, rms * 4));
+    frame = window.requestAnimationFrame(tick);
+  };
+
+  return {
+    start: async () => {
+      if (running) return true;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const Ctx: typeof AudioContext | undefined =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctx) return false;
+        context = new Ctx();
+        const source = context.createMediaStreamSource(stream);
+        analyser = context.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        running = true;
+        frame = window.requestAnimationFrame(tick);
+        return true;
+      } catch {
+        stop();
+        return false;
+      }
+    },
+    stop: () => {
+      running = false;
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+        frame = 0;
+      }
+      try {
+        stream?.getTracks().forEach((track) => track.stop());
+      } catch {
+        // Ignore track races.
+      }
+      stream = null;
+      try {
+        void context?.close();
+      } catch {
+        // Ignore close races.
+      }
+      context = null;
+      analyser = null;
+      onLevel(0);
+    },
+  };
+}
