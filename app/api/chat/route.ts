@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
         ],
         stream: true,
         ...(mode.id === "think" && REASONING_EFFORT_PATTERN.test(targetModel)
-          ? { reasoning_effort: "high" }
+          ? { reasoning_effort: "high", max_completion_tokens: 16_384 }
           : {}),
       }),
     });
