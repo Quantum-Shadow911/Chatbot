@@ -301,11 +301,19 @@ export function ChatApp() {
   );
 
   const handleExportPdf = useCallback(() => {
-    const list = document.querySelector("[data-message-list]");
-    if (!list) return;
+    const blocks = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-pdf-block]")
+    );
+    if (blocks.length === 0) return;
+    const html = blocks
+      .map((block) => {
+        const role = block.dataset.messageRole === "user" ? "You" : "Assistant";
+        return `<section class="pdf-msg pdf-msg-${role}"><p class="pdf-msg-role">${role}</p>${block.innerHTML}</section>`;
+      })
+      .join("");
     printPdf(
       conversation?.title ?? "AI Chatbot conversation",
-      list.innerHTML,
+      html,
       `Exported from AI Chatbot · ${formatDate(Date.now())}`
     );
   }, [conversation]);

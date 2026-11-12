@@ -210,7 +210,9 @@ function reducer(state: ChatState, action: Action): ChatState {
     case "DELETE": {
       const conversations = state.conversations.filter((c) => c.id !== action.id);
       const activeId =
-        state.activeId === action.id ? conversations[0]?.id ?? null : state.activeId;
+        state.activeId === action.id
+          ? [...conversations].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? null
+          : state.activeId;
       return { ...state, conversations, activeId };
     }
     case "ADD_MESSAGE":
@@ -347,6 +349,9 @@ export function useChat(options: UseChatOptions = {}) {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      let assistantContent = "";
+      let assistantReasoning = "";
+
       const payload = buildApiMessages(history);
 
       try {
@@ -390,8 +395,6 @@ export function useChat(options: UseChatOptions = {}) {
         const reader = body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        let assistantContent = "";
-        let assistantReasoning = "";
 
         const handleEvent = (data: string) => {
           if (data === "[DONE]") return;
@@ -487,6 +490,12 @@ export function useChat(options: UseChatOptions = {}) {
       } catch (error) {
         dispatch({ type: "END_STREAM" });
         if (error instanceof DOMException && error.name === "AbortError") {
+          if (
+            assistantContent.trim().length === 0 &&
+            assistantReasoning.trim().length === 0
+          ) {
+            dispatch({ type: "DELETE_MESSAGE", conversationId, messageId: assistantId });
+          }
           return;
         }
         dispatch({

@@ -10,6 +10,7 @@ import {
   type MicMeter,
   type Recognizer,
 } from "@/lib/voice";
+import { trapTabKey } from "@/lib/focusTrap";
 import { CloseIcon, MicIcon, SpeakerIcon, SparklesIcon, WaveformIcon } from "./icons";
 
 type Phase = "listening" | "thinking" | "speaking";
@@ -71,6 +72,7 @@ export function LiveMode({
   const meterRef = useRef<MicMeter | null>(null);
   const speakStartRef = useRef(0);
   const onLevelRef = useRef<(level: number) => void>(() => {});
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   onLevelRef.current = (level: number) => {
     const orb = orbRef.current;
@@ -263,6 +265,7 @@ export function LiveMode({
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      trapTabKey(dialogRef.current, event);
       if (event.key !== "Escape") return;
       if (phaseRef.current === "speaking") {
         stopSpeaking();
@@ -294,6 +297,7 @@ export function LiveMode({
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Live voice conversation"

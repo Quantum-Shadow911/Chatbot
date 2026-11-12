@@ -10,7 +10,14 @@ A modern, fully functional AI chatbot built with Next.js 15, React 19, TypeScrip
 - **Conversation management** — sidebar with new chat, inline rename, delete (with confirmation), and automatic titles from the first message.
 - **Persistence** — conversations and the active chat survive page refreshes via `localStorage`.
 - **Message actions** — copy AI responses, regenerate the last response, and edit & resend any of your messages (truncates the rest of the thread).
-- **Read aloud (TTS)** — a speaker button on every AI reply, plus an optional auto-read mode. Voice, speed, and auto-read are configurable in Settings → Voice using the browser's built-in speech engine (no API key needed).
+- **Read aloud (TTS)** — a speaker button on every AI reply, plus an optional auto-read mode. Neural voices are served by the `/api/tts` proxy (Groq Orpheus when available, with an automatic fallback voice), selectable in Settings → Voice.
+- **Live voice mode** — full-screen talk-to-AI overlay with real barge-in (talking interrupts the AI mid-reply and cancels in-flight generation), a mic-reactive orb and waveform, an ocean-themed favicon while active, and voice-typing dictation in the composer.
+- **Chat modes** — reasoning modes (Auto, Think with extended reasoning effort, Research) and specialty modes (Cooking, Coding, Study, Travel, Fitness) with automatic detection when Auto is selected.
+- **Memory** — important details are extracted after replies and remembered across conversations; view and manage them in Settings → Memory.
+- **Uploads** — images (downscaled client-side, routed to a vision-capable model when needed), text files (contents included in the prompt), and other files via button, drag-and-drop, or paste.
+- **Theming** — light/dark/system theme plus a full-spectrum accent color (presets or custom picker) that drives the UI and the favicon.
+- **PDF export** — download any AI reply or the whole conversation as a cleanly formatted PDF.
+- **AI-generated chat titles** — conversations are renamed by the model after the first exchange.
 - **Rich formatting** — Markdown with headings, lists, tables, and syntax-highlighted code blocks.
 - **Polished UX** — timestamps, smooth animations, stick-to-bottom auto-scroll with a jump-to-latest button, graceful error bubbles with retry, and rate-limit/network error handling.
 - **Responsive & accessible** — collapsible sidebar on mobile, keyboard navigation (Enter to send, Shift+Enter for newline, Escape to cancel edits), ARIA labels, and reduced-motion support.
@@ -124,26 +131,45 @@ Signing in identifies the user in the sidebar; chat history stays on the device.
 
 ```
 app/
-  api/chat/route.ts    # Streaming proxy to the Mistral API (key stays server-side)
-  layout.tsx           # Root layout and metadata
+  api/chat/route.ts    # Streaming proxy to the chat provider (key stays server-side)
+  api/models/route.ts  # Provider catalog for the header model picker
+  api/tts/route.ts     # Neural TTS proxy with keyless fallback voice
+  api/title/route.ts   # AI-generated conversation titles
+  api/memory/route.ts  # Memory extraction
+  layout.tsx           # Root layout, metadata, analytics
   page.tsx             # Chat page
   globals.css          # Tailwind theme, animations, markdown styles
 components/
-  ChatApp.tsx          # App shell and layout
-  Sidebar.tsx          # Conversation history, rename, delete
+  ChatApp.tsx          # App shell, theming, speech, live-mode wiring
+  LiveMode.tsx         # Full-screen voice mode with barge-in
+  Sidebar.tsx          # Conversation history, search, rename, delete
   MessageList.tsx      # Scrolling message log with auto-scroll
-  MessageBubble.tsx    # Message bubbles, actions, inline edit
-  Composer.tsx         # Input area, Enter/Shift+Enter, send/stop
+  MessageBubble.tsx    # Message bubbles, actions, thinking panel, inline edit
+  Composer.tsx         # Input area, uploads, dictation, send/stop
+  ModePicker.tsx       # Reasoning/specialty mode dropdown
+  ModelPicker.tsx      # Model dropdown
+  SettingsModal.tsx    # Appearance, voice, memory, data controls
   Markdown.tsx         # Markdown + syntax highlighting renderer
   CopyButton.tsx       # Clipboard button with feedback
   TypingIndicator.tsx  # Animated typing dots
   icons.tsx            # Inline SVG icons
 hooks/
   useChat.ts           # State management, streaming, persistence
+  useSettings.ts       # Theme, accent, voice, mode settings
+  useMemory.ts         # Long-term memory store
 lib/
   types.ts             # Shared types
   storage.ts           # localStorage load/save with validation
+  theme.ts             # Theming, accent CSS variables, dynamic favicon
+  modes.ts             # Mode definitions and auto-detection
+  speech.ts            # Neural TTS playback, cache, audio unlock
+  voice.ts             # Speech recognition wrapper and mic level meter
+  attachments.ts       # File processing, image downscaling
+  memory.ts            # Memory persistence and merging
+  pdf.ts               # Print-window PDF generator
+  focusTrap.ts         # Modal keyboard focus trapping
   utils.ts             # IDs, date formatting, title generation
+  vision.ts            # Vision-capable model detection
 ```
 
-Includes a favicon served from `app/icon.svg`.
+Includes a favicon (drawn dynamically to match the accent color, with an ocean variant for live mode) served from `app/icon.svg` plus generated PNG/apple-touch icons.
