@@ -3,16 +3,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatBytes, processFiles } from "@/lib/attachments";
 import type { Attachment } from "@/lib/types";
-import { CloseIcon, FileIcon, PaperclipIcon, SendIcon, StopIcon } from "./icons";
+import { speechRecognitionSupported } from "@/lib/voice";
+import { CloseIcon, FileIcon, MicIcon, PaperclipIcon, SendIcon, StopIcon } from "./icons";
 
 interface ComposerProps {
   busy: boolean;
   onSend: (content: string, attachments?: Attachment[]) => void;
   onStop: () => void;
   modelSupportsImages: boolean;
+  onOpenLive: () => void;
 }
 
-export function Composer({ busy, onSend, onStop, modelSupportsImages }: ComposerProps) {
+export function Composer({
+  busy,
+  onSend,
+  onStop,
+  modelSupportsImages,
+  onOpenLive,
+}: ComposerProps) {
   const [value, setValue] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -20,6 +28,11 @@ export function Composer({ busy, onSend, onStop, modelSupportsImages }: Composer
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dragDepthRef = useRef(0);
+  const [micAvailable, setMicAvailable] = useState(false);
+
+  useEffect(() => {
+    setMicAvailable(speechRecognitionSupported());
+  }, []);
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -211,9 +224,22 @@ export function Composer({ busy, onSend, onStop, modelSupportsImages }: Composer
       </div>
 
       <div className="mx-auto mt-2 flex max-w-3xl items-center justify-between gap-2">
-        <p id="chat-input-hint" className="text-[11px] text-slate-500">
-          Enter to send · Shift + Enter for a new line
-        </p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {micAvailable && (
+            <button
+              type="button"
+              onClick={onOpenLive}
+              aria-label="Start live voice conversation"
+              title="Live voice mode"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-400"
+            >
+              <MicIcon width={15} height={15} />
+            </button>
+          )}
+          <p id="chat-input-hint" className="truncate text-[11px] text-slate-500">
+            Enter to send · Shift + Enter for a new line
+          </p>
+        </div>
         {busy ? (
           <button
             type="button"

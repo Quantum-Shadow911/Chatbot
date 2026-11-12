@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/utils";
 import { supportsVision } from "@/lib/vision";
 import type { AuthProviderInfo, Message, SessionInfo } from "@/lib/types";
 import { Composer } from "./Composer";
+import { LiveMode } from "./LiveMode";
 import { MessageList } from "./MessageList";
 import { ModePicker } from "./ModePicker";
 import { ModelPicker } from "./ModelPicker";
@@ -68,6 +69,9 @@ export function ChatApp() {
   const [authProviders, setAuthProviders] = useState<AuthProviderInfo[]>([]);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const speakingIdRef = useRef<string | null>(null);
+  const [liveOpen, setLiveOpen] = useState(false);
+  const liveOpenRef = useRef(false);
+  liveOpenRef.current = liveOpen;
 
   const clearSpeech = useCallback(() => {
     stopSpeaking();
@@ -128,6 +132,7 @@ export function ChatApp() {
     if (previous !== "streaming" || chat.status !== "idle") return;
     if (!speechSupported()) return;
     if (!settingsRef.current.readAloud) return;
+    if (liveOpenRef.current) return;
     const last = chat.activeConversation?.messages.at(-1);
     if (!last || last.role !== "assistant" || last.error || !last.content) return;
     startSpeech(last);
@@ -268,6 +273,24 @@ export function ChatApp() {
 
   const conversation = chat.activeConversation;
   const messages = conversation?.messages ?? [];
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const lastAssistant =
+    lastMessage && lastMessage.role === "assistant" && !lastMessage.error
+      ? lastMessage
+      : null;
+
+  const handleOpenLive = useCallback(() => {
+    clearSpeech();
+    if (!chat.activeId) chat.startNewChat();
+    setLiveOpen(true);
+  }, [chat.activeId, chat.startNewChat, clearSpeech]);
+
+  const handleLiveSend = useCallback(
+    (text: string) => {
+      chat.sendMessage(text);
+    },
+    [chat.sendMessage]
+  );
 
   const handleExportPdf = useCallback(() => {
     const list = document.querySelector("[data-message-list]");
@@ -391,6 +414,7 @@ export function ChatApp() {
             supportsVision(currentModel || null) ||
             (availableModels?.visionFallback ?? false)
           }
+          onOpenLive={handleOpenLive}
         />
         <p className="bg-slate-950 pb-2 text-center text-[11px] text-slate-500">
           AI can make mistakes. Check important info.
@@ -423,6 +447,17 @@ export function ChatApp() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      <LiveMode
+        open={liveOpen}
+        onClose={() => setLiveOpen(false)}
+        onSend={handleLiveSend}
+        onStop={chat.stopGeneration}
+        status={chat.status}
+        lastAssistant={lastAssistant}
+        voice={settings.voice}
+        rate={settings.voiceRate}
+      />
 
       {memoryNotice && (
         <div
