@@ -3,7 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, type Settings, type ThemeMode } from "@/lib/theme";
 import type { MemoryItem } from "@/lib/memory";
-import { listVoices, onVoicesChanged, speak, speechSupported, stopSpeaking, type VoiceOption } from "@/lib/speech";
+import {
+  listVoices,
+  naturalTtsInfo,
+  onVoicesChanged,
+  speak,
+  speechSupported,
+  stopSpeaking,
+  type NaturalTtsInfo,
+  type VoiceOption,
+} from "@/lib/speech";
 import {
   CheckIcon,
   CloseIcon,
@@ -38,6 +47,7 @@ interface SettingsModalProps {
   onReadAloudChange: (enabled: boolean) => void;
   onVoiceChange: (voice: string | null) => void;
   onVoiceRateChange: (rate: number) => void;
+  onNaturalVoiceChange: (voice: string | null) => void;
   memory: MemorySettings;
   dataControls: DataControls;
   onClose: () => void;
@@ -76,6 +86,7 @@ export function SettingsModal({
   onReadAloudChange,
   onVoiceChange,
   onVoiceRateChange,
+  onNaturalVoiceChange,
   memory,
   dataControls,
   onClose,
@@ -84,12 +95,27 @@ export function SettingsModal({
   const [tab, setTab] = useState<SettingsTab>("general");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [natural, setNatural] = useState<NaturalTtsInfo>({
+    available: false,
+    voices: [],
+    default: null,
+  });
   const supported = speechSupported();
 
   useEffect(() => {
     const refresh = () => setVoices(listVoices());
     refresh();
     return onVoicesChanged(refresh);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void naturalTtsInfo().then((info) => {
+      if (!cancelled) setNatural(info);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -257,9 +283,9 @@ export function SettingsModal({
           {tab === "voice" && (
             <section aria-labelledby="settings-voice-label">
               <SectionHeading id="settings-voice-label">Voice</SectionHeading>
-              {!supported ? (
+              {!supported && !natural.available ? (
                 <p className="mt-3 rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2.5 text-xs leading-relaxed text-slate-400">
-                  Your browser doesn’t support speech. Try Chrome, Edge, or Safari.
+                  Speech isn’t available right now. Try Chrome, Edge, or Safari.
                 </p>
               ) : (
                 <>
@@ -292,12 +318,53 @@ export function SettingsModal({
                     </button>
                   </div>
 
+                  {natural.available && (
+                    <div className="mt-5">
+                      <label
+                        htmlFor="settings-natural-voice-select"
+                        className="text-xs font-medium text-slate-300"
+                      >
+                        Natural voice
+                      </label>
+                      <select
+                        id="settings-natural-voice-select"
+                        value={settings.naturalVoice ?? ""}
+                        onChange={(event) =>
+                          onNaturalVoiceChange(
+                            event.target.value === "" ? null : event.target.value
+                          )
+                        }
+                        className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm text-slate-200 outline-none transition-all focus:border-indigo-400/60 focus:shadow-[0_0_0_3px_var(--accent-badge-bg)]"
+                      >
+                        <option value="">
+                          Default
+                          {natural.default
+                            ? ` (${
+                                natural.voices.find(
+                                  (voice) => voice.id === natural.default
+                                )?.name ?? natural.default
+                              })`
+                            : ""}
+                        </option>
+                        {natural.voices.map((voice) => (
+                          <option key={voice.id} value={voice.id}>
+                            {voice.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Lifelike voices that sound like a real person. Used for
+                        live mode and read-aloud whenever available.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="mt-5">
                     <label
                       htmlFor="settings-voice-select"
                       className="text-xs font-medium text-slate-300"
                     >
-                      Voice
+                      Browser voice (fallback)
                     </label>
                     <select
                       id="settings-voice-select"
@@ -345,6 +412,7 @@ export function SettingsModal({
                     onClick={() =>
                       speak("Hey! This is how I will sound when I read replies aloud.", {
                         voiceURI: settings.voice,
+                        naturalVoice: settings.naturalVoice,
                         rate: settings.voiceRate,
                       })
                     }

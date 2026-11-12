@@ -10,6 +10,7 @@ export interface Settings {
   readAloud: boolean;
   voice: string | null;
   voiceRate: number;
+  naturalVoice: string | null;
   mode: string | null;
 }
 
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readAloud: false,
   voice: null,
   voiceRate: 1,
+  naturalVoice: null,
   mode: null,
 };
 export const DEFAULT_ACCENT = "#6366f1";
@@ -87,6 +89,12 @@ export function normalizeSettings(value: unknown): Settings {
       raw.voiceRate <= 2
         ? raw.voiceRate
         : DEFAULT_SETTINGS.voiceRate,
+    naturalVoice:
+      typeof raw.naturalVoice === "string" &&
+      raw.naturalVoice.length > 0 &&
+      raw.naturalVoice.length <= 100
+        ? raw.naturalVoice
+        : null,
     mode: isModeId(raw.mode) ? raw.mode : null,
   };
 }

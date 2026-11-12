@@ -54,6 +54,7 @@ export function ChatApp() {
     setReadAloud,
     setVoice,
     setVoiceRate,
+    setNaturalVoice,
     setChatMode,
   } = useSettings();
   const memoryRef = useRef(memories);
@@ -80,9 +81,10 @@ export function ChatApp() {
   }, []);
 
   const startSpeech = useCallback((message: Message) => {
-    const { voice, voiceRate } = settingsRef.current;
+    const { voice, voiceRate, naturalVoice } = settingsRef.current;
     const started = speak(message.content, {
       voiceURI: voice,
+      naturalVoice,
       rate: voiceRate,
       onEnd: () => {
         speakingIdRef.current = null;
@@ -131,7 +133,6 @@ export function ChatApp() {
     prevStatusRef.current = chat.status;
     if (chat.status === "loading") clearSpeech();
     if (previous !== "streaming" || chat.status !== "idle") return;
-    if (!speechSupported()) return;
     if (!settingsRef.current.readAloud) return;
     if (liveOpenRef.current) return;
     const last = chat.activeConversation?.messages.at(-1);
@@ -430,6 +431,7 @@ export function ChatApp() {
           onReadAloudChange={setReadAloud}
           onVoiceChange={setVoice}
           onVoiceRateChange={setVoiceRate}
+          onNaturalVoiceChange={setNaturalVoice}
           memory={{
             enabled: memoryEnabled,
             items: memories,
@@ -457,6 +459,7 @@ export function ChatApp() {
         status={chat.status}
         lastAssistant={lastAssistant}
         voice={settings.voice}
+        naturalVoice={settings.naturalVoice}
         rate={settings.voiceRate}
       />
 
