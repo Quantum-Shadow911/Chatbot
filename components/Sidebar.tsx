@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Conversation } from "@/lib/types";
+import { signIn, signOut } from "next-auth/react";
+import type { AuthProviderInfo, Conversation, SessionInfo } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { ChatIcon, CloseIcon, PencilIcon, PlusIcon, TrashIcon } from "./icons";
+import {
+  AppleIcon,
+  ChatIcon,
+  CloseIcon,
+  GoogleIcon,
+  LogoutIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+} from "./icons";
 
 interface SidebarProps {
   conversations: Conversation[];
@@ -14,6 +24,8 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onDelete: (id: string) => void;
+  session: SessionInfo | null;
+  providers: AuthProviderInfo[];
 }
 
 export function Sidebar({
@@ -25,6 +37,8 @@ export function Sidebar({
   onSelect,
   onRename,
   onDelete,
+  session,
+  providers,
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -211,6 +225,64 @@ export function Sidebar({
             </ul>
           )}
         </nav>
+
+        <div className="border-t border-white/10 p-3">
+          {session ? (
+            <div className="flex items-center gap-2 rounded-xl bg-slate-800/60 px-2.5 py-2">
+              {session.image ? (
+                <img
+                  src={session.image}
+                  alt=""
+                  width={32}
+                  height={32}
+                  referrerPolicy="no-referrer"
+                  className="h-8 w-8 shrink-0 rounded-full"
+                />
+              ) : (
+                <div
+                  aria-hidden
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-semibold text-white"
+                >
+                  {(session.name ?? "?").trim().charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-200">
+                  {session.name ?? "Signed in"}
+                </p>
+                {session.email && (
+                  <p className="truncate text-[11px] text-slate-500">{session.email}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                aria-label="Sign out"
+                title="Sign out"
+                className="rounded-md p-1.5 text-slate-500 hover:bg-white/10 hover:text-slate-200"
+              >
+                <LogoutIcon width={15} height={15} />
+              </button>
+            </div>
+          ) : (
+            providers.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {providers.map((provider) => (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    onClick={() => void signIn(provider.id)}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm font-medium text-slate-200 transition-all hover:border-white/20 hover:bg-slate-700/80 focus-visible:outline-2 focus-visible:outline-indigo-400"
+                  >
+                    {provider.id === "google" && <GoogleIcon width={15} height={15} />}
+                    {provider.id === "apple" && <AppleIcon width={15} height={15} />}
+                    Sign in with {provider.name}
+                  </button>
+                ))}
+              </div>
+            )
+          )}
+        </div>
       </aside>
     </>
   );

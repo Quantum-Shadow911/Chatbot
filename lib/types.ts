@@ -41,3 +41,14 @@ export interface ChatRequestMessage {
 export interface ChatRequest {
   messages: ChatRequestMessage[];
 }
+
+export interface AuthProviderInfo {
+  id: string;
+  name: string;
+}
+
+export interface SessionInfo {
+  name: string | null;
+  email: string | null;
+  image: string | null;
+}

@@ -57,6 +57,11 @@ npm start
 | `VISION_API_KEY`   | — (optional)             | API key for the vision fallback provider   |
 | `VISION_MODEL`     | — (optional)             | Vision-capable model for image messages    |
 | `VISION_API_URL`   | `https://api.mistral.ai` | API base URL of the vision fallback        |
+| `AUTH_SECRET`      | — (optional)             | Secret for signing sessions (`openssl rand -base64 32`) |
+| `AUTH_GOOGLE_ID`   | — (optional)             | Google OAuth client ID                     |
+| `AUTH_GOOGLE_SECRET` | — (optional)           | Google OAuth client secret                 |
+| `AUTH_APPLE_ID`    | — (optional)             | Apple Services ID (Apple Developer needed) |
+| `AUTH_APPLE_SECRET` | — (optional)            | Apple client secret JWT                    |
 
 ### Image understanding (vision fallback)
 
@@ -96,6 +101,23 @@ Model names change over time as providers retire old models — if you get a
 "model not found" style error, check your provider's current model list.
 The app surfaces the provider's real error message in the chat to make this
 easy to diagnose.
+
+### Sign-in with Google / Apple
+
+Sign-in is optional. Each provider appears in the sidebar once both of its
+variables are set:
+
+1. Set `AUTH_SECRET` in your deployment (`openssl rand -base64 32`).
+2. **Google** (free): create an OAuth client at
+   [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials),
+   add `<your-app-url>/api/auth/callback/google` as an authorized redirect URI,
+   then set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`.
+3. **Apple** (requires the paid Apple Developer Program): register a Services ID
+   and key at [developer.apple.com/account](https://developer.apple.com/account),
+   add `<your-app-url>/api/auth/callback/apple` as a return URL, then set
+   `AUTH_APPLE_ID` and `AUTH_APPLE_SECRET` (a client-secret JWT).
+
+Signing in identifies the user in the sidebar; chat history stays on the device.
 
 ## Project structure
 
