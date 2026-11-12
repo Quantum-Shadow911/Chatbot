@@ -4,25 +4,21 @@ import { supportsVision } from "@/lib/vision";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const API_URL = normalizeBase(process.env.MISTRAL_API_URL ?? "https://api.mistral.ai");
+const API_URL = process.env.MISTRAL_API_URL ?? "https://api.mistral.ai";
 const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
 const VISION_MODEL = (process.env.VISION_MODEL ?? "").trim();
 const VISION_API_KEY = (process.env.VISION_API_KEY ?? "").trim();
-const VISION_API_URL = normalizeBase(
-  process.env.VISION_API_URL ?? "https://api.mistral.ai"
-);
+const VISION_API_URL = process.env.VISION_API_URL ?? "https://api.mistral.ai";
 const MODEL_PATTERN = /^[A-Za-z0-9._:/-]{1,100}$/;
 
-function normalizeBase(url: string): string {
-  return url
+function completionsUrl(raw: string): string {
+  const base = raw
     .trim()
     .replace(/\/+$/, "")
-    .replace(/\/v1$/, "")
     .replace(/\/chat\/completions$/, "");
-}
-
-function completionsUrl(base: string): string {
-  if (/\/(v\d+|openai)$/.test(base)) return `${base}/chat/completions`;
+  if (/\/v\d+$/.test(base) || /\/openai$/.test(base)) {
+    return `${base}/chat/completions`;
+  }
   return `${base}/v1/chat/completions`;
 }
 
