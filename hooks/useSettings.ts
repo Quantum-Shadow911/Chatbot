@@ -47,14 +47,6 @@ export function useSettings() {
     setSettings((current) => ({ ...current, readAloud }));
   }, []);
 
-  const setVoice = useCallback((voice: string | null) => {
-    setSettings((current) => ({ ...current, voice }));
-  }, []);
-
-  const setVoiceRate = useCallback((voiceRate: number) => {
-    setSettings((current) => ({ ...current, voiceRate }));
-  }, []);
-
   const setNaturalVoice = useCallback((naturalVoice: string | null) => {
     setSettings((current) => ({ ...current, naturalVoice }));
   }, []);
@@ -71,8 +63,6 @@ export function useSettings() {
     setMemoryEnabled,
     setModel,
     setReadAloud,
-    setVoice,
-    setVoiceRate,
     setNaturalVoice,
     setChatMode,
   };

@@ -5,7 +5,7 @@ import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
 import { printPdf } from "@/lib/pdf";
-import { speak, speechSupported, stopSpeaking } from "@/lib/speech";
+import { speak, stopSpeaking } from "@/lib/speech";
 import { formatDate } from "@/lib/utils";
 import { supportsVision } from "@/lib/vision";
 import type { AuthProviderInfo, Message, SessionInfo } from "@/lib/types";
@@ -52,8 +52,6 @@ export function ChatApp() {
     setMemoryEnabled,
     setModel,
     setReadAloud,
-    setVoice,
-    setVoiceRate,
     setNaturalVoice,
     setChatMode,
   } = useSettings();
@@ -81,11 +79,9 @@ export function ChatApp() {
   }, []);
 
   const startSpeech = useCallback((message: Message) => {
-    const { voice, voiceRate, naturalVoice } = settingsRef.current;
+    const { naturalVoice } = settingsRef.current;
     const started = speak(message.content, {
-      voiceURI: voice,
       naturalVoice,
-      rate: voiceRate,
       onEnd: () => {
         speakingIdRef.current = null;
         setSpeakingId(null);
@@ -429,8 +425,6 @@ export function ChatApp() {
           onThemeChange={setTheme}
           onAccentChange={setAccent}
           onReadAloudChange={setReadAloud}
-          onVoiceChange={setVoice}
-          onVoiceRateChange={setVoiceRate}
           onNaturalVoiceChange={setNaturalVoice}
           memory={{
             enabled: memoryEnabled,
@@ -458,9 +452,7 @@ export function ChatApp() {
         onStop={chat.stopGeneration}
         status={chat.status}
         lastAssistant={lastAssistant}
-        voice={settings.voice}
         naturalVoice={settings.naturalVoice}
-        rate={settings.voiceRate}
       />
 
       {memoryNotice && (

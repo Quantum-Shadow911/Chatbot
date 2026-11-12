@@ -8,8 +8,6 @@ export interface Settings {
   memoryEnabled: boolean;
   model: string | null;
   readAloud: boolean;
-  voice: string | null;
-  voiceRate: number;
   naturalVoice: string | null;
   mode: string | null;
 }
@@ -20,8 +18,6 @@ export const DEFAULT_SETTINGS: Settings = {
   memoryEnabled: true,
   model: null,
   readAloud: false,
-  voice: null,
-  voiceRate: 1,
   naturalVoice: null,
   mode: null,
 };
@@ -77,18 +73,6 @@ export function normalizeSettings(value: unknown): Settings {
       typeof raw.readAloud === "boolean"
         ? raw.readAloud
         : DEFAULT_SETTINGS.readAloud,
-    voice:
-      typeof raw.voice === "string" &&
-      raw.voice.length > 0 &&
-      raw.voice.length <= 200
-        ? raw.voice
-        : null,
-    voiceRate:
-      typeof raw.voiceRate === "number" &&
-      raw.voiceRate >= 0.5 &&
-      raw.voiceRate <= 2
-        ? raw.voiceRate
-        : DEFAULT_SETTINGS.voiceRate,
     naturalVoice:
       typeof raw.naturalVoice === "string" &&
       raw.naturalVoice.length > 0 &&

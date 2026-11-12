@@ -1,9 +1,3 @@
-export interface VoiceOption {
-  uri: string;
-  name: string;
-  lang: string;
-}
-
 export interface NaturalVoice {
   id: string;
   name: string;
@@ -19,26 +13,6 @@ const MAX_SPEECH_LENGTH = 4000;
 const AUDIO_CACHE_LIMIT = 40;
 
 const EMOJI_PATTERN = /[\u{1F000}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{2022}\u{25A0}-\u{25FF}\u{E0020}-\u{E007F}]/gu;
-
-export function speechSupported(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
-}
-
-export function listVoices(): VoiceOption[] {
-  if (!speechSupported()) return [];
-  return window.speechSynthesis.getVoices().map((voice) => ({
-    uri: voice.voiceURI,
-    name: voice.name,
-    lang: voice.lang,
-  }));
-}
-
-export function onVoicesChanged(callback: () => void): () => void {
-  if (!speechSupported()) return () => {};
-  window.speechSynthesis.addEventListener("voiceschanged", callback);
-  return () =>
-    window.speechSynthesis.removeEventListener("voiceschanged", callback);
-}
 
 export function stripMarkdownForSpeech(text: string): string {
   return text
@@ -125,59 +99,9 @@ async function playNeural(
   return true;
 }
 
-async function speakWithNatural(
-  text: string,
-  options: {
-    voiceURI: string | null;
-    naturalVoice?: string | null;
-    rate: number;
-    onEnd?: () => void;
-  }
-): Promise<void> {
-  const info = await naturalTtsInfo();
-  if (info.available) {
-    const played = await playNeural(
-      text,
-      options.naturalVoice ?? info.default,
-      options.onEnd
-    );
-    if (played) return;
-  }
-  if (!speakBrowser(text, options)) options.onEnd?.();
-}
-
-function speakBrowser(
-  text: string,
-  options: { voiceURI: string | null; rate: number; onEnd?: () => void }
-): boolean {
-  if (!speechSupported()) return false;
-  const utterance = new SpeechSynthesisUtterance(text);
-  if (options.voiceURI) {
-    const voice = window.speechSynthesis
-      .getVoices()
-      .find((candidate) => candidate.voiceURI === options.voiceURI);
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
-    }
-  }
-  utterance.rate = options.rate;
-  if (options.onEnd) {
-    utterance.onend = options.onEnd;
-    utterance.onerror = options.onEnd;
-  }
-  window.speechSynthesis.speak(utterance);
-  return true;
-}
-
 export function speak(
   text: string,
-  options: {
-    voiceURI: string | null;
-    naturalVoice?: string | null;
-    rate: number;
-    onEnd?: () => void;
-  }
+  options: { naturalVoice?: string | null; onEnd?: () => void }
 ): boolean {
   const clean = stripMarkdownForSpeech(text).slice(0, MAX_SPEECH_LENGTH);
   if (!clean) {
@@ -185,7 +109,18 @@ export function speak(
     return false;
   }
   stopSpeaking();
-  void speakWithNatural(clean, options);
+  void (async () => {
+    const info = await naturalTtsInfo();
+    if (info.available) {
+      const played = await playNeural(
+        clean,
+        options.naturalVoice ?? info.default,
+        options.onEnd
+      );
+      if (played) return;
+    }
+    options.onEnd?.();
+  })();
   return true;
 }
 
@@ -195,6 +130,4 @@ export function stopSpeaking(): void {
     currentAudio.removeAttribute("src");
     currentAudio = null;
   }
-  if (!speechSupported()) return;
-  window.speechSynthesis.cancel();
 }

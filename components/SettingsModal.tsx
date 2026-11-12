@@ -4,14 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, type Settings, type ThemeMode } from "@/lib/theme";
 import type { MemoryItem } from "@/lib/memory";
 import {
-  listVoices,
   naturalTtsInfo,
-  onVoicesChanged,
   speak,
-  speechSupported,
   stopSpeaking,
   type NaturalTtsInfo,
-  type VoiceOption,
 } from "@/lib/speech";
 import {
   CheckIcon,
@@ -45,8 +41,6 @@ interface SettingsModalProps {
   onThemeChange: (theme: ThemeMode) => void;
   onAccentChange: (accent: string | null) => void;
   onReadAloudChange: (enabled: boolean) => void;
-  onVoiceChange: (voice: string | null) => void;
-  onVoiceRateChange: (rate: number) => void;
   onNaturalVoiceChange: (voice: string | null) => void;
   memory: MemorySettings;
   dataControls: DataControls;
@@ -84,8 +78,6 @@ export function SettingsModal({
   onThemeChange,
   onAccentChange,
   onReadAloudChange,
-  onVoiceChange,
-  onVoiceRateChange,
   onNaturalVoiceChange,
   memory,
   dataControls,
@@ -94,19 +86,11 @@ export function SettingsModal({
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<SettingsTab>("general");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [voices, setVoices] = useState<VoiceOption[]>([]);
   const [natural, setNatural] = useState<NaturalTtsInfo>({
     available: false,
     voices: [],
     default: null,
   });
-  const supported = speechSupported();
-
-  useEffect(() => {
-    const refresh = () => setVoices(listVoices());
-    refresh();
-    return onVoicesChanged(refresh);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -283,144 +267,98 @@ export function SettingsModal({
           {tab === "voice" && (
             <section aria-labelledby="settings-voice-label">
               <SectionHeading id="settings-voice-label">Voice</SectionHeading>
-              {!supported && !natural.available ? (
-                <p className="mt-3 rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2.5 text-xs leading-relaxed text-slate-400">
-                  Speech isn’t available right now. Try Chrome, Edge, or Safari.
-                </p>
-              ) : (
-                <>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    Have replies read aloud. Pick a voice and speed — press the
-                    speaker button under any reply to hear it.
+              <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                Have replies read aloud with a natural, human-sounding voice —
+                press the speaker button under any reply to hear it.
+              </p>
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <span className="text-xs text-slate-300">
+                  Read replies aloud automatically
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.readAloud}
+                  aria-label="Toggle read aloud"
+                  onClick={() => onReadAloudChange(!settings.readAloud)}
+                  className="relative h-5 w-9 shrink-0 rounded-full border border-white/10 transition-colors"
+                  style={{
+                    backgroundColor: settings.readAloud
+                      ? "var(--accent)"
+                      : "rgba(255, 255, 255, 0.12)",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-all"
+                    style={{ left: settings.readAloud ? "1.25rem" : "0.125rem" }}
+                  />
+                </button>
+              </div>
+
+              {natural.available ? (
+                <div className="mt-5">
+                  <label
+                    htmlFor="settings-natural-voice-select"
+                    className="text-xs font-medium text-slate-300"
+                  >
+                    Voice
+                  </label>
+                  <select
+                    id="settings-natural-voice-select"
+                    value={settings.naturalVoice ?? ""}
+                    onChange={(event) =>
+                      onNaturalVoiceChange(
+                        event.target.value === "" ? null : event.target.value
+                      )
+                    }
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm text-slate-200 outline-none transition-all focus:border-indigo-400/60 focus:shadow-[0_0_0_3px_var(--accent-badge-bg)]"
+                  >
+                    <option value="">
+                      Default
+                      {natural.default
+                        ? ` (${
+                            natural.voices.find(
+                              (voice) => voice.id === natural.default
+                            )?.name ?? natural.default
+                          })`
+                        : ""}
+                    </option>
+                    {natural.voices.map((voice) => (
+                      <option key={voice.id} value={voice.id}>
+                        {voice.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Lifelike voices that sound like a real person. Used for live
+                    mode and read-aloud.
                   </p>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-300">
-                      Read replies aloud automatically
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={settings.readAloud}
-                      aria-label="Toggle read aloud"
-                      onClick={() => onReadAloudChange(!settings.readAloud)}
-                      className="relative h-5 w-9 shrink-0 rounded-full border border-white/10 transition-colors"
-                      style={{
-                        backgroundColor: settings.readAloud
-                          ? "var(--accent)"
-                          : "rgba(255, 255, 255, 0.12)",
-                      }}
-                    >
-                      <span
-                        aria-hidden
-                        className="absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-all"
-                        style={{ left: settings.readAloud ? "1.25rem" : "0.125rem" }}
-                      />
-                    </button>
-                  </div>
-
-                  {natural.available && (
-                    <div className="mt-5">
-                      <label
-                        htmlFor="settings-natural-voice-select"
-                        className="text-xs font-medium text-slate-300"
-                      >
-                        Natural voice
-                      </label>
-                      <select
-                        id="settings-natural-voice-select"
-                        value={settings.naturalVoice ?? ""}
-                        onChange={(event) =>
-                          onNaturalVoiceChange(
-                            event.target.value === "" ? null : event.target.value
-                          )
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm text-slate-200 outline-none transition-all focus:border-indigo-400/60 focus:shadow-[0_0_0_3px_var(--accent-badge-bg)]"
-                      >
-                        <option value="">
-                          Default
-                          {natural.default
-                            ? ` (${
-                                natural.voices.find(
-                                  (voice) => voice.id === natural.default
-                                )?.name ?? natural.default
-                              })`
-                            : ""}
-                        </option>
-                        {natural.voices.map((voice) => (
-                          <option key={voice.id} value={voice.id}>
-                            {voice.name}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Lifelike voices that sound like a real person. Used for
-                        live mode and read-aloud whenever available.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="mt-5">
-                    <label
-                      htmlFor="settings-voice-select"
-                      className="text-xs font-medium text-slate-300"
-                    >
-                      Browser voice (fallback)
-                    </label>
-                    <select
-                      id="settings-voice-select"
-                      value={settings.voice ?? ""}
-                      onChange={(event) =>
-                        onVoiceChange(event.target.value === "" ? null : event.target.value)
-                      }
-                      className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm text-slate-200 outline-none transition-all focus:border-indigo-400/60 focus:shadow-[0_0_0_3px_var(--accent-badge-bg)]"
-                    >
-                      <option value="">Default voice</option>
-                      {voices.map((voice) => (
-                        <option key={voice.uri} value={voice.uri}>
-                          {voice.name} ({voice.lang})
-                        </option>
-                      ))}
-                    </select>
-                    {voices.length === 0 && (
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Loading voices…
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-5">
-                    <label
-                      htmlFor="settings-voice-rate"
-                      className="text-xs font-medium text-slate-300"
-                    >
-                      Speed: {settings.voiceRate.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}×
-                    </label>
-                    <input
-                      id="settings-voice-rate"
-                      type="range"
-                      min={0.5}
-                      max={2}
-                      step={0.05}
-                      value={settings.voiceRate}
-                      onChange={(event) => onVoiceRateChange(Number(event.target.value))}
-                      className="mt-2 w-full accent-[var(--accent)]"
-                    />
-                  </div>
-
                   <button
                     type="button"
                     onClick={() =>
                       speak("Hey! This is how I will sound when I read replies aloud.", {
-                        voiceURI: settings.voice,
                         naturalVoice: settings.naturalVoice,
-                        rate: settings.voiceRate,
                       })
                     }
-                    className="mt-5 rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-200 transition-all hover:border-white/20 hover:bg-slate-700/80"
+                    className="mt-4 rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-200 transition-all hover:border-white/20 hover:bg-slate-700/80"
                   >
                     Preview voice
                   </button>
-                </>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2.5 text-xs leading-relaxed text-slate-400">
+                  Natural voices aren’t set up yet. Open the{" "}
+                  <a
+                    href="https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline decoration-slate-600 underline-offset-2 hover:text-slate-200"
+                  >
+                    Groq console
+                  </a>{" "}
+                  and accept the voice model terms — then reload this page.
+                </p>
               )}
             </section>
           )}
