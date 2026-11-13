@@ -19,10 +19,12 @@ export interface QuizData {
   questions: QuizQuestion[];
 }
 
-const OPEN_PATTERN = /^<<<CANVAS\s+(document|quiz|html|video)\s*\|\s*(.{1,120}?)\s*>>>$/;
+const BLOCK_PATTERN =
+  /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)\s*\|\s*([^\n]{1,120}?)\s*>>>\n?([\s\S]*?)<<<\s*END[\s-]?CANVAS\s*>>>/gi;
 
-const CANVAS_OPEN = "<<<CANVAS";
-const CANVAS_CLOSE = "<<<END-CANVAS>>>";
+const FENCE_PATTERN = /```[a-zA-Z0-9_-]*[ \t]*\n([\s\S]*?)```/g;
+
+const PENDING_PATTERN = /<<<\s*CANVAS/i;
 
 export const CANVAS_TYPE_LABEL: Record<CanvasType, string> = {
   document: "Document",
@@ -39,70 +41,10 @@ export function hashText(text: string): string {
   return `cv-${(hash >>> 0).toString(36)}`;
 }
 
-function parseCanvasBlock(block: string): CanvasArtifact | null {
-  const newline = block.indexOf("\n");
-  if (newline === -1) return null;
-  const header = block.slice(0, newline).trim();
-  const match = OPEN_PATTERN.exec(header);
-  if (!match) return null;
-  const content = block.slice(newline + 1).trim();
-  if (!content) return null;
-  const type = match[1] as CanvasType;
-  const title = match[2].trim() || CANVAS_TYPE_LABEL[type];
-  return {
-    id: hashText(`${type}:${title}:${content.slice(0, 4000)}`),
-    type,
-    title,
-    content,
-  };
-}
-
-export type CanvasSegment =
-  | { kind: "text"; text: string }
-  | { kind: "canvas"; artifact: CanvasArtifact }
-  | { kind: "canvas-pending" };
-
-export function splitCanvasSegments(content: string): CanvasSegment[] {
-  const segments: CanvasSegment[] = [];
-  let rest = content;
-  for (;;) {
-    const open = rest.indexOf(CANVAS_OPEN);
-    if (open === -1) {
-      if (rest.length > 0) segments.push({ kind: "text", text: rest });
-      break;
-    }
-    if (open > 0) segments.push({ kind: "text", text: rest.slice(0, open) });
-    const close = rest.indexOf(CANVAS_CLOSE, open);
-    if (close === -1) {
-      segments.push({ kind: "canvas-pending" });
-      break;
-    }
-    const artifact = parseCanvasBlock(rest.slice(open, close));
-    if (artifact) {
-      segments.push({ kind: "canvas", artifact });
-    } else {
-      segments.push({ kind: "text", text: rest.slice(open, close + CANVAS_CLOSE.length) });
-    }
-    rest = rest.slice(close + CANVAS_CLOSE.length);
-  }
-  return segments;
-}
-
-export function stripCanvasBlocks(text: string): string {
-  return text
-    .replace(/<<<CANVAS[^\n]*\n[\s\S]*?<<<END-CANVAS>>>/g, "")
-    .replace(/<<<CANVAS[\s\S]*$/, "")
-    .trim();
-}
-
-export function findLastCanvas(content: string): CanvasArtifact | null {
-  const segments = splitCanvasSegments(content);
-  for (let i = segments.length - 1; i >= 0; i -= 1) {
-    const segment = segments[i];
-    if (segment.kind === "canvas") return segment.artifact;
-    if (segment.kind === "canvas-pending") return null;
-  }
-  return null;
+function unwrapFence(content: string): string {
+  const trimmed = content.trim();
+  const match = /^```[a-zA-Z0-9_-]*[ \t]*\n([\s\S]*?)\n?```$/.exec(trimmed);
+  return (match ? match[1] : trimmed).trim();
 }
 
 export function parseQuiz(content: string): QuizData | null {
@@ -132,8 +74,18 @@ export function parseQuiz(content: string): QuizData | null {
       (choice): choice is string => typeof choice === "string"
     );
     if (choices.length !== q.choices.length) return null;
-    const answer = q.answer;
+    let answer = q.answer as number | string | undefined;
+    if (typeof answer === "string") {
+      const index = choices.findIndex(
+        (choice) => choice.trim().toLowerCase() === (answer as string).trim().toLowerCase()
+      );
+      if (index === -1) return null;
+      answer = index;
+    }
     if (typeof answer !== "number" || !Number.isInteger(answer)) return null;
+    if (answer >= choices.length && answer - 1 >= 0 && answer - 1 < choices.length) {
+      answer -= 1;
+    }
     if (answer < 0 || answer >= choices.length) return null;
     questions.push({
       question: q.question,
@@ -146,10 +98,103 @@ export function parseQuiz(content: string): QuizData | null {
   return { title, questions };
 }
 
+function quizArtifact(content: string): CanvasArtifact | null {
+  const quiz = parseQuiz(content);
+  if (!quiz) return null;
+  const body = content.trim();
+  const title = quiz.title?.trim() || "Quiz";
+  return {
+    id: hashText(`quiz:${title}:${body.slice(0, 4000)}`),
+    type: "quiz",
+    title,
+    content: body,
+  };
+}
+
+function pushText(segments: CanvasSegment[], text: string) {
+  if (!text) return;
+  let last = 0;
+  FENCE_PATTERN.lastIndex = 0;
+  for (let m = FENCE_PATTERN.exec(text); m !== null; m = FENCE_PATTERN.exec(text)) {
+    const artifact = quizArtifact(m[1]);
+    if (artifact) {
+      if (m.index > last) segments.push({ kind: "text", text: text.slice(last, m.index) });
+      segments.push({ kind: "canvas", artifact });
+    } else {
+      segments.push({ kind: "text", text: text.slice(last, m.index + m[0].length) });
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) segments.push({ kind: "text", text: text.slice(last) });
+}
+
+export type CanvasSegment =
+  | { kind: "text"; text: string }
+  | { kind: "canvas"; artifact: CanvasArtifact }
+  | { kind: "canvas-pending" };
+
+export function splitCanvasSegments(content: string): CanvasSegment[] {
+  const segments: CanvasSegment[] = [];
+  let last = 0;
+  BLOCK_PATTERN.lastIndex = 0;
+  for (
+    let m = BLOCK_PATTERN.exec(content);
+    m !== null;
+    m = BLOCK_PATTERN.exec(content)
+  ) {
+    if (m.index > last) pushText(segments, content.slice(last, m.index));
+    const type = m[1].toLowerCase() as CanvasType;
+    const title = m[2].trim() || CANVAS_TYPE_LABEL[type];
+    const body = unwrapFence(m[3]);
+    if (body) {
+      segments.push({
+        kind: "canvas",
+        artifact: {
+          id: hashText(`${type}:${title}:${body.slice(0, 4000)}`),
+          type,
+          title,
+          content: body,
+        },
+      });
+    } else {
+      segments.push({ kind: "text", text: m[0] });
+    }
+    last = m.index + m[0].length;
+  }
+  const rest = content.slice(last);
+  const pending = PENDING_PATTERN.exec(rest);
+  if (pending) {
+    if (pending.index > 0) pushText(segments, rest.slice(0, pending.index));
+    segments.push({ kind: "canvas-pending" });
+  } else {
+    pushText(segments, rest);
+  }
+  return segments;
+}
+
+export function stripCanvasBlocks(text: string): string {
+  return text
+    .replace(BLOCK_PATTERN, "")
+    .replace(/<<<\s*CANVAS[\s\S]*$/i, "")
+    .trim();
+}
+
+export function findLastCanvas(content: string): CanvasArtifact | null {
+  const segments = splitCanvasSegments(content);
+  for (let i = segments.length - 1; i >= 0; i -= 1) {
+    const segment = segments[i];
+    if (segment.kind === "canvas") return segment.artifact;
+    if (segment.kind === "canvas-pending") return null;
+  }
+  return null;
+}
+
 export function canvasDownload(
   artifact: CanvasArtifact
 ): { filename: string; mime: string; body: string } {
-  const safe = artifact.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "canvas";
+  const safe =
+    artifact.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60) ||
+    "canvas";
   if (artifact.type === "html" || artifact.type === "video") {
     return { filename: `${safe}.html`, mime: "text/html", body: artifact.content };
   }
