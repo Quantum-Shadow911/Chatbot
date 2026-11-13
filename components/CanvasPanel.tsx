@@ -38,6 +38,7 @@ export function CanvasPanel({ artifact, streaming = false, onClose }: CanvasPane
   const [copied, setCopied] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const docRef = useRef<HTMLDivElement | null>(null);
 
   const isWeb = artifact.type === "html" || artifact.type === "video";
   const quiz = useMemo(
@@ -51,6 +52,12 @@ export function CanvasPanel({ artifact, streaming = false, onClose }: CanvasPane
     setReloadKey(0);
     panelRef.current?.focus();
   }, [artifact.id]);
+
+  useEffect(() => {
+    if (!streaming || artifact.type !== "document") return;
+    const el = docRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [streaming, artifact.type, artifact.content]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -219,7 +226,7 @@ export function CanvasPanel({ artifact, streaming = false, onClose }: CanvasPane
               )}
             </div>
           ) : (
-            <div className="h-full overflow-y-auto px-5 py-4">
+            <div ref={docRef} className="h-full overflow-y-auto px-5 py-4">
               <Markdown content={artifact.content} />
             </div>
           )}
