@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
-import { findLastCanvas, type CanvasArtifact } from "@/lib/canvas";
+import {
+  findCanvasStream,
+  type CanvasArtifact,
+} from "@/lib/canvas";
 import { printPdf } from "@/lib/pdf";
 import { speak, stopSpeaking, unlockAudioPlayback } from "@/lib/speech";
 import { applyFavicon, DEFAULT_ACCENT, type FaviconVariant } from "@/lib/theme";
@@ -79,7 +82,9 @@ export function ChatApp() {
   const liveOpenRef = useRef(false);
   liveOpenRef.current = liveOpen;
   const [canvas, setCanvas] = useState<CanvasArtifact | null>(null);
+  const [canvasLive, setCanvasLive] = useState(false);
   const autoOpenedCanvasRef = useRef<string | null>(null);
+  const canvasClosedRef = useRef<string | null>(null);
 
   const clearSpeech = useCallback(() => {
     stopSpeaking();
@@ -148,18 +153,38 @@ export function ChatApp() {
   useEffect(() => clearSpeech, [clearSpeech]);
 
   useEffect(() => {
-    if (chat.status === "idle") return;
+    if (chat.status === "idle") {
+      setCanvasLive(false);
+      return;
+    }
     const last = chat.activeConversation?.messages.at(-1);
     if (!last || last.role !== "assistant" || last.error) return;
-    const artifact = findLastCanvas(last.content);
-    if (!artifact || autoOpenedCanvasRef.current === artifact.id) return;
-    autoOpenedCanvasRef.current = artifact.id;
+    const stream = findCanvasStream(last.content);
+    if (!stream) return;
+    const { artifact, complete } = stream;
+    if (canvasClosedRef.current === artifact.id) return;
+    if (complete) {
+      if (autoOpenedCanvasRef.current === artifact.id) return;
+      autoOpenedCanvasRef.current = artifact.id;
+      setCanvasLive(false);
+      setCanvas(artifact);
+      return;
+    }
+    setCanvasLive(true);
     setCanvas(artifact);
   }, [chat.status, chat.activeConversation?.messages]);
 
   const handleOpenCanvas = useCallback((artifact: CanvasArtifact) => {
+    canvasClosedRef.current = null;
+    setCanvasLive(false);
     setCanvas(artifact);
   }, []);
+
+  const handleCloseCanvas = useCallback(() => {
+    canvasClosedRef.current = canvas?.id ?? null;
+    setCanvasLive(false);
+    setCanvas(null);
+  }, [canvas]);
 
   useEffect(() => {
     unlockAudioPlayback();
@@ -488,7 +513,13 @@ export function ChatApp() {
         />
       )}
 
-      {canvas && <CanvasPanel artifact={canvas} onClose={() => setCanvas(null)} />}
+      {canvas && (
+        <CanvasPanel
+          artifact={canvas}
+          streaming={canvasLive}
+          onClose={handleCloseCanvas}
+        />
+      )}
 
       <LiveMode
         open={liveOpen}
