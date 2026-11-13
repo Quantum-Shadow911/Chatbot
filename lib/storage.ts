@@ -47,7 +47,8 @@ function isConversation(value: unknown): value is Conversation {
     Array.isArray(c.messages) &&
     c.messages.every(isMessage) &&
     typeof c.createdAt === "number" &&
-    typeof c.updatedAt === "number"
+    typeof c.updatedAt === "number" &&
+    (c.pinned === undefined || typeof c.pinned === "boolean")
   );
 }
 

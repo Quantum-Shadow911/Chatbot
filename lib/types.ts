@@ -28,6 +28,7 @@ export interface Conversation {
   messages: Message[];
   createdAt: number;
   updatedAt: number;
+  pinned?: boolean;
 }
 
 export type ContentPart =
