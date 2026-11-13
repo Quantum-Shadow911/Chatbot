@@ -6,6 +6,8 @@ import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
 import {
   findCanvasStream,
+  findLastCanvas,
+  stripCanvasBlocks,
   type CanvasArtifact,
 } from "@/lib/canvas";
 import { printPdf } from "@/lib/pdf";
@@ -364,6 +366,44 @@ export function ChatApp() {
       `Exported from AI Chatbot · ${formatDate(Date.now())}`
     );
   }, [conversation]);
+  const handleExportMarkdown = useCallback(() => {
+    if (!conversation) return;
+    const lines: string[] = [
+      `# ${conversation.title}`,
+      "",
+      `*Exported from AI Chatbot · ${formatDate(Date.now())}*`,
+      "",
+    ];
+    for (const message of conversation.messages) {
+      if (message.error) continue;
+      const canvas = findLastCanvas(message.content);
+      const body =
+        stripCanvasBlocks(message.content).trim() ||
+        (canvas ? `[Canvas: ${canvas.title}]` : "");
+      if (!body && (message.attachments ?? []).length === 0) continue;
+      lines.push(
+        message.role === "user" ? "## You" : "## Assistant",
+        "",
+        body || "*(attachments only)*",
+        "",
+        `*${formatDate(message.createdAt)}*`,
+        "",
+        "---",
+        ""
+      );
+    }
+    const safe =
+      conversation.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60) ||
+      "chat";
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${safe}.md`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [conversation]);
+
   const busy = chat.status !== "idle";
   const models = availableModels?.models ?? [];
   const currentModel =
@@ -381,6 +421,7 @@ export function ChatApp() {
         onNewChat={chat.startNewChat}
         onSelect={chat.selectConversation}
         onRename={chat.renameConversation}
+        onTogglePin={chat.togglePin}
         onDelete={chat.deleteConversation}
         session={session}
         providers={authProviders}
@@ -505,6 +546,8 @@ export function ChatApp() {
             onExport: handleExport,
             onExportPdf: handleExportPdf,
             canExportPdf: messages.length > 0 && !busy,
+            onExportMarkdown: handleExportMarkdown,
+            canExportMarkdown: messages.length > 0 && !busy,
             onDeleteAll: handleDeleteAll,
             canDeleteAll: !busy && chat.conversations.length > 0,
             conversationCount: chat.conversations.length,

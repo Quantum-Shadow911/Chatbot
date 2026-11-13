@@ -11,6 +11,7 @@ import {
   GoogleIcon,
   LogoutIcon,
   PencilIcon,
+  PinIcon,
   PlusIcon,
   TrashIcon,
 } from "./icons";
@@ -23,6 +24,7 @@ interface SidebarProps {
   onNewChat: () => void;
   onSelect: (id: string) => void;
   onRename: (id: string, title: string) => void;
+  onTogglePin: (id: string, pinned: boolean) => void;
   onDelete: (id: string) => void;
   session: SessionInfo | null;
   providers: AuthProviderInfo[];
@@ -36,6 +38,7 @@ export function Sidebar({
   onNewChat,
   onSelect,
   onRename,
+  onTogglePin,
   onDelete,
   session,
   providers,
@@ -51,7 +54,11 @@ export function Sidebar({
 
   const normalizedQuery = query.trim().toLowerCase();
   const sorted = [...conversations]
-    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .sort(
+      (a, b) =>
+        Number(b.pinned ?? false) - Number(a.pinned ?? false) ||
+        b.updatedAt - a.updatedAt
+    )
     .filter(
       (conversation) =>
         normalizedQuery.length === 0 ||
@@ -182,11 +189,29 @@ export function Sidebar({
                             {conversation.title}
                           </span>
                           <span className="block text-[11px] text-slate-500">
+                            {conversation.pinned ? "📌 " : ""}
                             {formatDate(conversation.updatedAt)} ·{" "}
                             {conversation.messages.length} messages
                           </span>
                         </button>
                         <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => onTogglePin(conversation.id, !conversation.pinned)}
+                            aria-label={
+                              conversation.pinned
+                                ? `Unpin conversation: ${conversation.title}`
+                                : `Pin conversation: ${conversation.title}`
+                            }
+                            title={conversation.pinned ? "Unpin" : "Pin"}
+                            className={`rounded-md p-1.5 hover:bg-white/10 ${
+                              conversation.pinned
+                                ? "text-indigo-300 opacity-100"
+                                : "text-slate-500 hover:text-slate-200"
+                            }`}
+                          >
+                            <PinIcon width={13} height={13} />
+                          </button>
                           <button
                             type="button"
                             onClick={() => {

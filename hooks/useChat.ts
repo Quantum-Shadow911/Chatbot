@@ -44,6 +44,7 @@ type Action =
   | { type: "NEW_CHAT"; conversation: Conversation }
   | { type: "SELECT"; id: string }
   | { type: "RENAME"; id: string; title: string }
+  | { type: "PIN"; id: string; pinned: boolean }
   | { type: "DELETE"; id: string }
   | { type: "ADD_MESSAGE"; conversationId: string; message: Message }
   | { type: "APPEND_DELTA"; conversationId: string; messageId: string; delta: string }
@@ -223,6 +224,11 @@ function reducer(state: ChatState, action: Action): ChatState {
       return mapConversation(state, action.id, (c) => ({
         ...c,
         title: action.title.trim() || c.title,
+      }));
+    case "PIN":
+      return mapConversation(state, action.id, (c) => ({
+        ...c,
+        pinned: action.pinned,
       }));
     case "DELETE": {
       const conversations = state.conversations.filter((c) => c.id !== action.id);
@@ -607,6 +613,10 @@ export function useChat(options: UseChatOptions = {}) {
     dispatch({ type: "RENAME", id, title });
   }, []);
 
+  const togglePin = useCallback((id: string, pinned: boolean) => {
+    dispatch({ type: "PIN", id, pinned });
+  }, []);
+
   const deleteConversation = useCallback((id: string) => {
     dispatch({ type: "DELETE", id });
   }, []);
@@ -628,6 +638,7 @@ export function useChat(options: UseChatOptions = {}) {
     startNewChat,
     selectConversation,
     renameConversation,
+    togglePin,
     deleteConversation,
     deleteAllConversations,
     stopGeneration,
