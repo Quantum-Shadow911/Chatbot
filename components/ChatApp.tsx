@@ -17,6 +17,7 @@ import { formatDate } from "@/lib/utils";
 import { supportsVision } from "@/lib/vision";
 import type { AuthProviderInfo, Message, SessionInfo } from "@/lib/types";
 import { Composer } from "./Composer";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { LiveMode } from "./LiveMode";
 import { MessageList } from "./MessageList";
 import { ModePicker } from "./ModePicker";
@@ -175,6 +176,13 @@ export function ChatApp() {
     setCanvasLive(true);
     setCanvas(artifact);
   }, [chat.status, chat.activeConversation?.messages]);
+
+  useEffect(() => {
+    setCanvas(null);
+    setCanvasLive(false);
+    autoOpenedCanvasRef.current = null;
+    canvasClosedRef.current = null;
+  }, [chat.activeId]);
 
   const handleOpenCanvas = useCallback((artifact: CanvasArtifact) => {
     canvasClosedRef.current = null;
@@ -500,17 +508,19 @@ export function ChatApp() {
             </div>
           </div>
         ) : (
-          <MessageList
-            messages={messages}
-            status={chat.status}
-            canRegenerate={chat.status === "idle"}
-            speakingId={speakingId}
-            onSpeakToggle={handleSpeakToggle}
-            onOpenCanvas={handleOpenCanvas}
-            conversationTitle={conversation?.title ?? ""}
-            onRegenerate={chat.regenerate}
-            onEditResend={handleEditResend}
-          />
+          <ErrorBoundary key={chat.activeId ?? "chat"}>
+            <MessageList
+              messages={messages}
+              status={chat.status}
+              canRegenerate={chat.status === "idle"}
+              speakingId={speakingId}
+              onSpeakToggle={handleSpeakToggle}
+              onOpenCanvas={handleOpenCanvas}
+              conversationTitle={conversation?.title ?? ""}
+              onRegenerate={chat.regenerate}
+              onEditResend={handleEditResend}
+            />
+          </ErrorBoundary>
         )}
 
         <Composer
@@ -557,11 +567,13 @@ export function ChatApp() {
       )}
 
       {canvas && (
-        <CanvasPanel
-          artifact={canvas}
-          streaming={canvasLive}
-          onClose={handleCloseCanvas}
-        />
+        <ErrorBoundary>
+          <CanvasPanel
+            artifact={canvas}
+            streaming={canvasLive}
+            onClose={handleCloseCanvas}
+          />
+        </ErrorBoundary>
       )}
 
       <LiveMode
