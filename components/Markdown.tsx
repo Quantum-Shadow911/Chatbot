@@ -4,6 +4,7 @@ import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { CodeBlock } from "./CodeBlock";
 
 export const Markdown = memo(function Markdown({ content }: { content: string }) {
   return (
@@ -17,6 +18,7 @@ export const Markdown = memo(function Markdown({ content }: { content: string })
               {children}
             </a>
           ),
+          pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
         }}
       >
         {content}
