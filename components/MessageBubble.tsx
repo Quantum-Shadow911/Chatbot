@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { Attachment, Message } from "@/lib/types";
 import { splitCanvasSegments, stripCanvasBlocks } from "@/lib/canvas";
 import { formatBytes } from "@/lib/attachments";
@@ -149,6 +149,14 @@ function MessageBubbleImpl({
   const editing = isUser && isEditing;
   const [draft, setDraft] = useState(message.content);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const segments = useMemo(
+    () => (isUser ? null : splitCanvasSegments(message.content)),
+    [isUser, message.content]
+  );
+  const hasCanvas = useMemo(
+    () => segments?.some((s) => s.kind !== "text") ?? false,
+    [segments]
+  );
 
   useEffect(() => {
     if (editing) {
@@ -265,7 +273,8 @@ function MessageBubbleImpl({
             <p className="shimmer-text text-xs text-slate-400">Working on it…</p>
           ) : (
             <div data-message-body={message.id} className="flex min-w-0 flex-col gap-2">
-              {splitCanvasSegments(message.content).map((segment, segmentIndex) =>
+              {(hasCanvas ? segments! : [{ kind: "text" as const, text: message.content }]).map(
+                (segment, segmentIndex) =>
                 segment.kind === "text" ? (
                   segment.text.trim().length > 0 ? (
                     <Markdown key={segmentIndex} content={segment.text.trim()} />
