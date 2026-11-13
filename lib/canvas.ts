@@ -179,6 +179,18 @@ export function stripCanvasBlocks(text: string): string {
     .trim();
 }
 
+const MAX_CANVAS_BODY_CHARS = 12_000;
+
+export function compactCanvasForApi(content: string): string {
+  return content.replace(
+    /(<<<CANVAS[^\n]*\n)([\s\S]*?)(<<<\s*END[\s-]?CANVAS\s*>>>)/gi,
+    (match, head: string, body: string, close: string) => {
+      if (body.length <= MAX_CANVAS_BODY_CHARS) return match;
+      return `${head}${body.slice(0, MAX_CANVAS_BODY_CHARS)}\n[...canvas content truncated...]${close}`;
+    }
+  );
+}
+
 export function findLastCanvas(content: string): CanvasArtifact | null {
   const segments = splitCanvasSegments(content);
   for (let i = segments.length - 1; i >= 0; i -= 1) {

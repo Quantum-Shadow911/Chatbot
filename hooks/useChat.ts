@@ -9,6 +9,11 @@ import type {
 } from "@/lib/types";
 import { formatBytes } from "@/lib/attachments";
 import {
+  compactCanvasForApi,
+  findLastCanvas,
+  stripCanvasBlocks,
+} from "@/lib/canvas";
+import {
   loadActiveConversationId,
   loadConversations,
   saveActiveConversationId,
@@ -79,7 +84,9 @@ function buildApiMessages(history: Message[]): ChatRequestMessage[] {
       const images = (message.attachments ?? []).filter(
         (a) => a.kind === "image" && a.dataUrl
       );
-      const text = buildTextWithAttachments(message);
+      const raw = buildTextWithAttachments(message);
+      const text =
+        message.role === "assistant" ? compactCanvasForApi(raw) : raw;
       if (images.length === 0) return { role: message.role, content: text };
       return {
         role: message.role,
@@ -104,6 +111,10 @@ async function generateTitle(
 ): Promise<string | null> {
   const firstUser = history.find((m) => m.role === "user");
   if (!firstUser || assistantContent.trim().length === 0) return null;
+  const cleanContent =
+    stripCanvasBlocks(assistantContent) ||
+    (findLastCanvas(assistantContent)?.title ?? "");
+  if (!cleanContent.trim()) return null;
   try {
     const response = await fetch("/api/title", {
       method: "POST",
@@ -114,7 +125,7 @@ async function generateTitle(
             role: "user",
             content: buildTextWithAttachments(firstUser).slice(0, 4_000),
           },
-          { role: "assistant", content: assistantContent.slice(0, 4_000) },
+          { role: "assistant", content: cleanContent.slice(0, 4_000) },
         ],
       }),
     });
@@ -146,9 +157,15 @@ async function extractMemories(
       .slice(-10)
       .map((m) => ({
         role: m.role,
-        content: buildTextWithAttachments(m).slice(0, 8_000),
+        content:
+          m.role === "assistant"
+            ? stripCanvasBlocks(buildTextWithAttachments(m)).slice(0, 8_000)
+            : buildTextWithAttachments(m).slice(0, 8_000),
       })),
-    { role: "assistant" as const, content: assistantContent.slice(0, 8_000) },
+    {
+      role: "assistant" as const,
+      content: stripCanvasBlocks(assistantContent).slice(0, 8_000),
+    },
   ];
   try {
     const response = await fetch("/api/memory", {
