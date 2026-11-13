@@ -189,6 +189,62 @@ export function findLastCanvas(content: string): CanvasArtifact | null {
   return null;
 }
 
+export interface CanvasStream {
+  artifact: CanvasArtifact;
+  complete: boolean;
+}
+
+const HEADER_PATTERN =
+  /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)\s*\|\s*([^\n]{0,120}?)(?:\s*>>>)?$/i;
+
+const TYPE_ONLY_PATTERN = /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)/i;
+
+const TRAILING_CLOSE_PATTERN = /<<<\s*END[\s-]?CANVAS\s*>*>?\s*$/i;
+
+export function findCanvasStream(content: string): CanvasStream | null {
+  const segments = splitCanvasSegments(content);
+  for (let i = segments.length - 1; i >= 0; i -= 1) {
+    const segment = segments[i];
+    if (segment.kind === "canvas") {
+      return { artifact: segment.artifact, complete: true };
+    }
+    if (segment.kind === "canvas-pending") break;
+  }
+  const opens = [...content.matchAll(/<<<\s*CANVAS/gi)];
+  if (opens.length === 0) return null;
+  const afterOpen = content.slice(opens[opens.length - 1].index);
+  const newline = afterOpen.indexOf("\n");
+  const header = (newline === -1 ? afterOpen : afterOpen.slice(0, newline)).trim();
+  const headerMatch = HEADER_PATTERN.exec(header);
+  if (!headerMatch) {
+    const typeMatch = TYPE_ONLY_PATTERN.exec(header);
+    if (!typeMatch) return null;
+    const type = typeMatch[1].toLowerCase() as CanvasType;
+    return {
+      artifact: {
+        id: hashText(`pending:${type}`),
+        type,
+        title: CANVAS_TYPE_LABEL[type],
+        content: "",
+      },
+      complete: false,
+    };
+  }
+  const type = headerMatch[1].toLowerCase() as CanvasType;
+  const title = headerMatch[2].trim() || CANVAS_TYPE_LABEL[type];
+  const partial =
+    newline === -1 ? "" : afterOpen.slice(newline + 1).replace(TRAILING_CLOSE_PATTERN, "");
+  return {
+    artifact: {
+      id: hashText(`pending:${type}`),
+      type,
+      title,
+      content: partial.trim(),
+    },
+    complete: false,
+  };
+}
+
 export function canvasDownload(
   artifact: CanvasArtifact
 ): { filename: string; mime: string; body: string } {

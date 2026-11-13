@@ -14,10 +14,26 @@ import { CheckIcon, CloseIcon, CopyIcon, DownloadIcon, RefreshIcon } from "./ico
 
 interface CanvasPanelProps {
   artifact: CanvasArtifact;
+  streaming?: boolean;
   onClose: () => void;
 }
 
-export function CanvasPanel({ artifact, onClose }: CanvasPanelProps) {
+function CanvasLoading({ label }: { label: string }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4">
+      <span
+        className="live-spin block h-14 w-14 rounded-full"
+        style={{
+          background:
+            "conic-gradient(from 0deg, transparent 5%, var(--accent) 30%, transparent 55%)",
+        }}
+      />
+      <p className="shimmer-text text-sm font-semibold text-slate-300">{label}</p>
+    </div>
+  );
+}
+
+export function CanvasPanel({ artifact, streaming = false, onClose }: CanvasPanelProps) {
   const [showCode, setShowCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -169,7 +185,15 @@ export function CanvasPanel({ artifact, onClose }: CanvasPanelProps) {
 
         <div className="min-h-0 flex-1 overflow-hidden">
           {isWeb ? (
-            showCode ? (
+            streaming ? (
+              <CanvasLoading
+                label={
+                  artifact.type === "video"
+                    ? "Filming your animation…"
+                    : "Building your canvas…"
+                }
+              />
+            ) : showCode ? (
               <pre className="h-full overflow-auto whitespace-pre-wrap break-words px-4 py-4 text-[11px] leading-relaxed text-slate-300">
                 <code>{artifact.content}</code>
               </pre>
@@ -184,7 +208,9 @@ export function CanvasPanel({ artifact, onClose }: CanvasPanelProps) {
             )
           ) : artifact.type === "quiz" ? (
             <div className="h-full overflow-y-auto">
-              {quiz ? (
+              {streaming ? (
+                <CanvasLoading label="Writing your quiz…" />
+              ) : quiz ? (
                 <QuizView quiz={quiz} />
               ) : (
                 <pre className="whitespace-pre-wrap break-words px-4 py-4 text-xs text-slate-300">
