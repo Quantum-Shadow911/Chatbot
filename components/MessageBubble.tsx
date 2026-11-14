@@ -3,6 +3,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { Attachment, Message } from "@/lib/types";
 import {
+  friendlyCanvasPhrasing,
   splitCanvasSegments,
   stripCanvasBlocks,
   withStableId,
@@ -282,7 +283,10 @@ function MessageBubbleImpl({
                 (segment, segmentIndex) =>
                 segment.kind === "text" ? (
                   segment.text.trim().length > 0 ? (
-                    <Markdown key={segmentIndex} content={segment.text.trim()} />
+                    <Markdown
+                      key={segmentIndex}
+                      content={friendlyCanvasPhrasing(segment.text.trim())}
+                    />
                   ) : null
                 ) : segment.kind === "canvas" ? (
                   <CanvasCard key={segmentIndex} artifact={segment.artifact} onOpen={onOpenCanvas} />

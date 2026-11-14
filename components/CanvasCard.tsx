@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { CANVAS_TYPE_LABEL, type CanvasArtifact } from "@/lib/canvas";
+import { type CanvasArtifact } from "@/lib/canvas";
 import { FileIcon, SparklesIcon, WaveformIcon } from "./icons";
 
 const TYPE_ICON = {
@@ -43,12 +43,6 @@ export const CanvasCard = memo(function CanvasCard({
         <Icon width={17} height={17} />
       </span>
       <span className="min-w-0 flex-1">
-        <span
-          className="block text-[10px] font-semibold uppercase tracking-wider"
-          style={{ color: "var(--accent-text)" }}
-        >
-          {CANVAS_TYPE_LABEL[artifact.type]}
-        </span>
         <span className="block truncate text-sm font-semibold text-slate-100">
           {artifact.title}
         </span>
