@@ -7,6 +7,8 @@ import { CheckIcon, ChevronDownIcon } from "./icons";
 interface ModePickerProps {
   selected: string | null;
   onSelect: (mode: string | null) => void;
+  secondary: string | null;
+  onSelectSecondary: (mode: string | null) => void;
 }
 
 const CATEGORY_LABELS: Record<Mode["category"], string> = {
@@ -14,10 +16,20 @@ const CATEGORY_LABELS: Record<Mode["category"], string> = {
   specialty: "Specialties",
 };
 
-export function ModePicker({ selected, onSelect }: ModePickerProps) {
+export function ModePicker({
+  selected,
+  onSelect,
+  secondary,
+  onSelectSecondary,
+}: ModePickerProps) {
   const [open, setOpen] = useState(false);
+  const [combineOpen, setCombineOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const current = MODES.find((mode) => mode.id === selected) ?? MODES[0];
+  const secondaryMode = secondary ? MODES.find((mode) => mode.id === secondary) : null;
+  const combinable = MODES.filter(
+    (mode) => mode.id !== "auto" && mode.id !== current.id
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -55,7 +67,9 @@ export function ModePicker({ selected, onSelect }: ModePickerProps) {
           className="h-1.5 w-1.5 rounded-full"
           style={{ backgroundColor: "var(--accent)" }}
         />
-        <span className="max-w-[110px] truncate">{current.label}</span>
+        <span className="max-w-[110px] truncate">
+          {secondaryMode ? `${current.label} + ${secondaryMode.label}` : current.label}
+        </span>
         <ChevronDownIcon width={12} height={12} />
       </button>
       {open && (
@@ -102,6 +116,49 @@ export function ModePicker({ selected, onSelect }: ModePickerProps) {
               })}
             </li>
           ))}
+          <li className="border-t border-white/10 px-3 pb-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setCombineOpen((state) => !state)}
+              aria-expanded={combineOpen}
+              className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:text-slate-300"
+            >
+              <span>Combine with…</span>
+              <ChevronDownIcon
+                width={11}
+                height={11}
+                className={`transition-transform ${combineOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {combineOpen && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {combinable.map((mode) => {
+                  const active = mode.id === secondaryMode?.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => onSelectSecondary(active ? null : mode.id)}
+                      aria-pressed={active}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        active
+                          ? "border-indigo-400/60 bg-indigo-500/20 text-indigo-200"
+                          : "border-white/15 text-slate-300 hover:bg-white/10"
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {secondaryMode && (
+              <p className="mt-2 text-[11px] leading-snug text-slate-500">
+                {current.label} + {secondaryMode.label}: replies follow both
+                styles. Tap the highlighted chip to remove it.
+              </p>
+            )}
+          </li>
         </ul>
       )}
     </div>

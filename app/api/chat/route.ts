@@ -173,10 +173,12 @@ function lastUserText(messages: IncomingMessage[]): string {
 function buildSystemMessage(
   memories: string[],
   modePrompt: string,
+  mode2Prompt: string,
   livePrompt: string
 ): string {
   const parts = [BASE_SYSTEM_PROMPT];
   if (modePrompt) parts.push(modePrompt);
+  if (mode2Prompt) parts.push(mode2Prompt);
   if (livePrompt) {
     parts.push(livePrompt);
   } else {
@@ -257,6 +259,11 @@ export async function POST(request: NextRequest) {
     typeof (body as Record<string, unknown>).mode === "string"
       ? ((body as Record<string, unknown>).mode as string).slice(0, 32)
       : "auto";
+  const requestedMode2 =
+    typeof body === "object" && body !== null &&
+    typeof (body as Record<string, unknown>).mode2 === "string"
+      ? ((body as Record<string, unknown>).mode2 as string).slice(0, 32)
+      : null;
   const live =
     typeof body === "object" &&
     body !== null &&
@@ -266,6 +273,13 @@ export async function POST(request: NextRequest) {
     mode.id === "auto"
       ? getMode(detectModeId(lastUserText(messages))).prompt
       : mode.prompt;
+  // A second mode can be combined on top of the first (e.g. research + travel).
+  const mode2 =
+    requestedMode2 && isModeId(requestedMode2) && requestedMode2 !== mode.id
+      ? getMode(requestedMode2)
+      : null;
+  const mode2Prompt =
+    mode2 && mode2.id !== "auto" && mode2.prompt !== modePrompt ? mode2.prompt : "";
   const livePrompt = live ? LIVE_VOICE_PROMPT : "";
 
   let upstream: Response;
@@ -297,11 +311,13 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: targetModel,
         messages: [
-          { role: "system", content: buildSystemMessage(memories, modePrompt, livePrompt) },
+          { role: "system", content: buildSystemMessage(memories, modePrompt, mode2Prompt, livePrompt) },
           ...messages,
         ],
         stream: true,
-        ...(mode.id === "think" && !live && REASONING_EFFORT_PATTERN.test(targetModel)
+        ...((mode.id === "think" || mode2?.id === "think") &&
+        !live &&
+        REASONING_EFFORT_PATTERN.test(targetModel)
           ? { reasoning_effort: "high", max_completion_tokens: 16_384 }
           : {}),
       }),
