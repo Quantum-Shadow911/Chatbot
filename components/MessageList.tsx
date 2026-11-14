@@ -11,6 +11,7 @@ interface MessageListProps {
   status: "idle" | "loading" | "streaming";
   canRegenerate: boolean;
   speakingId: string | null;
+  showThinking: boolean;
   onSpeakToggle: (message: Message) => void;
   onOpenCanvas: (artifact: CanvasArtifact, streaming?: boolean) => void;
   conversationTitle: string;
@@ -23,6 +24,7 @@ export function MessageList({
   status,
   canRegenerate,
   speakingId,
+  showThinking,
   onSpeakToggle,
   onOpenCanvas,
   conversationTitle,
@@ -89,6 +91,7 @@ export function MessageList({
               isEditing={editingId === message.id}
               canRegenerate={canRegenerate}
               isSpeaking={speakingId === message.id}
+              showThinking={showThinking}
               onSpeakToggle={onSpeakToggle}
               onOpenCanvas={onOpenCanvas}
               conversationTitle={conversationTitle}

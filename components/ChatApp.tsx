@@ -552,6 +552,7 @@ export function ChatApp() {
               status={chat.status}
               canRegenerate={chat.status === "idle"}
               speakingId={speakingId}
+              showThinking={settings.mode === "think" || settings.mode2 === "think"}
               onSpeakToggle={handleSpeakToggle}
               onOpenCanvas={handleOpenCanvas}
               conversationTitle={conversation?.title ?? ""}

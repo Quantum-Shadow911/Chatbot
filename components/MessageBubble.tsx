@@ -36,6 +36,7 @@ interface MessageBubbleProps {
   isEditing: boolean;
   canRegenerate: boolean;
   isSpeaking: boolean;
+  showThinking: boolean;
   onSpeakToggle: (message: Message) => void;
   onOpenCanvas: (artifact: CanvasArtifact, streaming?: boolean) => void;
   conversationTitle: string;
@@ -143,6 +144,7 @@ function MessageBubbleImpl({
   isEditing,
   canRegenerate,
   isSpeaking,
+  showThinking,
   onSpeakToggle,
   onOpenCanvas,
   conversationTitle,
@@ -248,7 +250,7 @@ function MessageBubbleImpl({
           {!message.error && (message.attachments?.length ?? 0) > 0 && (
             <AttachmentList attachments={message.attachments ?? []} isUser={isUser} />
           )}
-          {!message.error && !isUser && (message.reasoning ?? "").length > 0 && (
+          {!message.error && !isUser && showThinking && (message.reasoning ?? "").length > 0 && (
             <ThinkingPanel
               reasoning={message.reasoning ?? ""}
               active={isStreaming && message.content === ""}
