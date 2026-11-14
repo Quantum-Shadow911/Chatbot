@@ -12,7 +12,7 @@ interface MessageListProps {
   canRegenerate: boolean;
   speakingId: string | null;
   onSpeakToggle: (message: Message) => void;
-  onOpenCanvas: (artifact: CanvasArtifact) => void;
+  onOpenCanvas: (artifact: CanvasArtifact, streaming?: boolean) => void;
   conversationTitle: string;
   onRegenerate: () => void;
   onEditResend: (id: string, content: string) => boolean;

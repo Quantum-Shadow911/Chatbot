@@ -49,6 +49,28 @@ function normalizeFact(value: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
+function similarity(a: string, b: string): number {
+  const tokensA = new Set(a.toLowerCase().split(/\s+/));
+  const tokensB = new Set(b.toLowerCase().split(/\s+/));
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+  let overlap = 0;
+  for (const token of tokensA) {
+    if (tokensB.has(token)) overlap += 1;
+  }
+  return overlap / Math.max(tokensA.size, tokensB.size);
+}
+
+const SIMILARITY_THRESHOLD = 0.6;
+
+function isNearDuplicate(text: string, memories: MemoryItem[]): boolean {
+  return memories.some(
+    (memory) =>
+      similarity(text, memory.text) >= SIMILARITY_THRESHOLD ||
+      memory.text.toLowerCase().includes(text.toLowerCase()) ||
+      text.toLowerCase().includes(memory.text.toLowerCase())
+  );
+}
+
 export function mergeMemories(
   existing: MemoryItem[],
   incoming: unknown
@@ -63,7 +85,7 @@ export function mergeMemories(
     const text = normalizeFact(item);
     if (!text) continue;
     const key = text.toLowerCase().replace(/[.!]$/, "");
-    if (known.has(key)) continue;
+    if (known.has(key) || isNearDuplicate(text, memories)) continue;
     known.add(key);
     added.push(text);
     memories.push({

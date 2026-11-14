@@ -1,3 +1,5 @@
+import type { Message } from "./types";
+
 export type CanvasType = "document" | "quiz" | "html" | "video";
 
 export interface CanvasArtifact {
@@ -20,11 +22,9 @@ export interface QuizData {
 }
 
 const BLOCK_PATTERN =
-  /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)\s*\|\s*([^\n]{1,120}?)\s*>>>\n?([\s\S]*?)<<<\s*END[\s-]?CANVAS\s*>>>/gi;
+  /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)(?:\s*\|\s*([^\n]{1,120}?))?\s*>>>\n?([\s\S]*?)<<<\s*END[\s_-]?CANVAS\s*>>>/gi;
 
 const FENCE_PATTERN = /```[a-zA-Z0-9_-]*[ \t]*\n([\s\S]*?)```/g;
-
-const PENDING_PATTERN = /<<<\s*CANVAS/i;
 
 export const CANVAS_TYPE_LABEL: Record<CanvasType, string> = {
   document: "Document",
@@ -131,7 +131,7 @@ function pushText(segments: CanvasSegment[], text: string) {
 export type CanvasSegment =
   | { kind: "text"; text: string }
   | { kind: "canvas"; artifact: CanvasArtifact }
-  | { kind: "canvas-pending" };
+  | { kind: "canvas-pending"; artifact: CanvasArtifact };
 
 export function splitCanvasSegments(content: string): CanvasSegment[] {
   const segments: CanvasSegment[] = [];
@@ -144,7 +144,7 @@ export function splitCanvasSegments(content: string): CanvasSegment[] {
   ) {
     if (m.index > last) pushText(segments, content.slice(last, m.index));
     const type = m[1].toLowerCase() as CanvasType;
-    const title = m[2].trim() || CANVAS_TYPE_LABEL[type];
+    const title = (m[2] ?? "").trim() || CANVAS_TYPE_LABEL[type];
     const body = unwrapFence(m[3]);
     if (body) {
       segments.push({
@@ -162,10 +162,10 @@ export function splitCanvasSegments(content: string): CanvasSegment[] {
     last = m.index + m[0].length;
   }
   const rest = content.slice(last);
-  const pending = PENDING_PATTERN.exec(rest);
+  const pending = pendingArtifactFrom(rest);
   if (pending) {
     if (pending.index > 0) pushText(segments, rest.slice(0, pending.index));
-    segments.push({ kind: "canvas-pending" });
+    segments.push({ kind: "canvas-pending", artifact: pending.artifact });
   } else {
     pushText(segments, rest);
   }
@@ -183,7 +183,7 @@ const MAX_CANVAS_BODY_CHARS = 12_000;
 
 export function compactCanvasForApi(content: string): string {
   return content.replace(
-    /(<<<CANVAS[^\n]*\n)([\s\S]*?)(<<<\s*END[\s-]?CANVAS\s*>>>)/gi,
+    /(<<<CANVAS[^\n]*\n)([\s\S]*?)(<<<\s*END[\s_-]?CANVAS\s*>>>)/gi,
     (match, head: string, body: string, close: string) => {
       if (body.length <= MAX_CANVAS_BODY_CHARS) return match;
       return `${head}${body.slice(0, MAX_CANVAS_BODY_CHARS)}\n[...canvas content truncated...]${close}`;
@@ -207,11 +207,110 @@ export interface CanvasStream {
 }
 
 const HEADER_PATTERN =
-  /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)\s*\|\s*([^\n]{0,120}?)(?:\s*>>>)?$/i;
+  /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)(?:\s*\|\s*([^\n]{0,120}?))?(?:\s*>>>)?$/i;
 
 const TYPE_ONLY_PATTERN = /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)/i;
 
-const TRAILING_CLOSE_PATTERN = /<<<\s*END[\s-]?CANVAS\s*>*>?\s*$/i;
+const TRAILING_CLOSE_PATTERN = /<<<\s*END[\s_-]?CANVAS\s*>*>?\s*$/i;
+
+interface PendingParse {
+  index: number;
+  artifact: CanvasArtifact;
+}
+
+function pendingArtifactFrom(text: string): PendingParse | null {
+  const opens = [...text.matchAll(/<<<\s*CANVAS/gi)];
+  if (opens.length === 0) return null;
+  const index = opens[opens.length - 1].index ?? 0;
+  const afterOpen = text.slice(index);
+  const closeIdx = afterOpen.indexOf(">");
+  const header = (
+    closeIdx === -1 ? afterOpen.split("\n")[0] : afterOpen.slice(0, closeIdx)
+  ).trim();
+  const headerMatch = HEADER_PATTERN.exec(header);
+  let type: CanvasType;
+  let title: string;
+  if (headerMatch) {
+    type = headerMatch[1].toLowerCase() as CanvasType;
+    title = (headerMatch[2] ?? "").trim() || CANVAS_TYPE_LABEL[type];
+  } else {
+    const typeMatch = TYPE_ONLY_PATTERN.exec(header);
+    if (!typeMatch) return null;
+    type = typeMatch[1].toLowerCase() as CanvasType;
+    title = CANVAS_TYPE_LABEL[type];
+  }
+  let partial = "";
+  if (closeIdx !== -1) {
+    // Canvas content always starts on its own line. Text on the same line as
+    // the header (e.g. the marker mentioned in prose) is NOT a canvas.
+    const raw = afterOpen.slice(closeIdx + 3);
+    if (raw === "" || /^\s*\n/.test(raw) || raw.trim() === "") {
+      partial = raw.replace(/^\s*\n/, "").replace(TRAILING_CLOSE_PATTERN, "");
+    } else {
+      return null;
+    }
+  }
+  return {
+    index,
+    artifact: {
+      id: hashText(`pending:${type}`),
+      type,
+      title,
+      content: partial.trim(),
+    },
+  };
+}
+
+export function withStableId(artifact: CanvasArtifact): CanvasArtifact {
+  return {
+    ...artifact,
+    id: hashText(`${artifact.type}:${artifact.title}:${artifact.content.slice(0, 4000)}`),
+  };
+}
+
+export interface CanvasScanConversation {
+  id: string;
+  title: string;
+  updatedAt: number;
+  messages: Pick<Message, "role" | "content" | "createdAt" | "error">[];
+}
+
+export interface CanvasEntry {
+  artifact: CanvasArtifact;
+  conversationId: string;
+  conversationTitle: string;
+  createdAt: number;
+}
+
+export function collectCanvases(conversations: CanvasScanConversation[]): CanvasEntry[] {
+  const byId = new Map<string, CanvasEntry>();
+  for (const conversation of conversations) {
+    for (const message of conversation.messages) {
+      if (message.role !== "assistant" || message.error || !message.content) continue;
+      for (const segment of splitCanvasSegments(message.content)) {
+        let artifact: CanvasArtifact | null = null;
+        if (segment.kind === "canvas") {
+          artifact = segment.artifact;
+        } else if (segment.kind === "canvas-pending" && segment.artifact.content.trim()) {
+          // A stored (finished) message with an unterminated canvas — recover it.
+          artifact = withStableId(segment.artifact);
+        }
+        if (!artifact) continue;
+        const createdAt = Number(message.createdAt) || conversation.updatedAt;
+        const existing = byId.get(artifact.id);
+        if (!existing || existing.createdAt < createdAt) {
+          byId.set(artifact.id, {
+            artifact,
+            conversationId: conversation.id,
+            conversationTitle: conversation.title,
+            createdAt,
+          });
+        }
+      }
+    }
+  }
+  return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
 
 export function findCanvasStream(content: string): CanvasStream | null {
   const segments = splitCanvasSegments(content);
@@ -222,39 +321,9 @@ export function findCanvasStream(content: string): CanvasStream | null {
     }
     if (segment.kind === "canvas-pending") break;
   }
-  const opens = [...content.matchAll(/<<<\s*CANVAS/gi)];
-  if (opens.length === 0) return null;
-  const afterOpen = content.slice(opens[opens.length - 1].index);
-  const newline = afterOpen.indexOf("\n");
-  const header = (newline === -1 ? afterOpen : afterOpen.slice(0, newline)).trim();
-  const headerMatch = HEADER_PATTERN.exec(header);
-  if (!headerMatch) {
-    const typeMatch = TYPE_ONLY_PATTERN.exec(header);
-    if (!typeMatch) return null;
-    const type = typeMatch[1].toLowerCase() as CanvasType;
-    return {
-      artifact: {
-        id: hashText(`pending:${type}`),
-        type,
-        title: CANVAS_TYPE_LABEL[type],
-        content: "",
-      },
-      complete: false,
-    };
-  }
-  const type = headerMatch[1].toLowerCase() as CanvasType;
-  const title = headerMatch[2].trim() || CANVAS_TYPE_LABEL[type];
-  const partial =
-    newline === -1 ? "" : afterOpen.slice(newline + 1).replace(TRAILING_CLOSE_PATTERN, "");
-  return {
-    artifact: {
-      id: hashText(`pending:${type}`),
-      type,
-      title,
-      content: partial.trim(),
-    },
-    complete: false,
-  };
+  const pending = pendingArtifactFrom(content);
+  if (!pending) return null;
+  return { artifact: pending.artifact, complete: false };
 }
 
 export function canvasDownload(
