@@ -86,12 +86,6 @@ export function CanvasPendingCard({ artifact, onOpen }: CanvasPendingCardProps) 
         <Icon width={17} height={17} />
       </span>
       <span className="min-w-0 flex-1">
-        <span
-          className="block text-[10px] font-semibold uppercase tracking-wider"
-          style={{ color: "var(--accent-text)" }}
-        >
-          {CANVAS_TYPE_LABEL[artifact.type]}
-        </span>
         <span className="shimmer-text block truncate text-sm font-semibold text-slate-300">
           Creating {artifact.title}…
         </span>
