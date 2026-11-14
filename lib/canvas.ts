@@ -296,23 +296,27 @@ function pendingArtifactFrom(text: string): PendingParse | null {
   };
 }
 
-const INTERACTIVE_PHRASE_PATTERN = /\binteractive\s+(quizzes|quiz|pages|page)\b/gi;
-const AN_INTERACTIVE_PHRASE_PATTERN = /\ban\s+interactive\s+(quizzes|quiz|pages|page)\b/gi;
+const INTERACTIVE_PHRASE_PATTERN = /\binteractive\s+(quizzes|quiz|pages|page|games|game)\b/gi;
+const AN_INTERACTIVE_PHRASE_PATTERN = /\ban\s+interactive\s+(quizzes|quiz|pages|page|games|game)\b/gi;
+const ANIMATED_VIDEO_PHRASE_PATTERN = /\b(animated|animation)\s+(videos|video)\b/gi;
+const AN_ANIMATED_VIDEO_PHRASE_PATTERN = /\ban\s+(animated|animation)\s+(videos|video)\b/gi;
 
-/** Hide the phrase "interactive quiz/page" if the model writes it in prose. */
+/** Hide phrases like "interactive quiz/page/game" and "animated video" in prose. */
 export function friendlyCanvasPhrasing(text: string): string {
   return text
     .replace(
       AN_INTERACTIVE_PHRASE_PATTERN,
       (_match, word: string) => {
         const w = word.toLowerCase();
-        return w === "quizzes" || w === "pages" ? `the ${w}` : `a ${w}`;
+        return w === "quizzes" || w === "pages" || w === "games" ? `the ${w}` : `a ${w}`;
       }
     )
     .replace(
       INTERACTIVE_PHRASE_PATTERN,
       (_match, word: string) => word.toLowerCase()
-    );
+    )
+    .replace(AN_ANIMATED_VIDEO_PHRASE_PATTERN, "an animation")
+    .replace(ANIMATED_VIDEO_PHRASE_PATTERN, "animation");
 }
 
 export function withStableId(artifact: CanvasArtifact): CanvasArtifact {

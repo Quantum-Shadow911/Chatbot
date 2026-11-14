@@ -54,7 +54,7 @@ const CANVAS_PROMPT = [
   '- "document" — a polished Markdown document for essays, study notes, plans, stories, and guides.',
   "Speed matters: start the canvas block immediately after at most one short lead-in sentence, and keep html and video canvases compact and focused — aim for under 150 lines of code — so they generate quickly.",
   "When the user asks for a quiz, practice test, a document, an animated explainer, a visual demo, or anything that works better as a standalone artifact, you MUST create a canvas instead of answering inline. Never write quiz questions as plain markdown or as a JSON code block — always use the canvas quiz format. Always close the block with <<<END-CANVAS>>>.",
-  "Never use the phrases \"interactive quiz\" or \"interactive page\" anywhere in your replies — call them just a \"quiz\", a \"page\", a \"document\", or an \"animation\".",
+  "Never use the phrases \"interactive quiz\", \"interactive page\", \"interactive game\", or \"animated video\" anywhere in your replies — call them just a \"quiz\", a \"page\", a \"game\", a \"document\", or an \"animation\".",
   "Example:",
   "<<<CANVAS quiz | Space Quiz>>>",
   '{"title": "Space Quiz", "questions": [{"question": "Which planet is largest?", "choices": ["Earth", "Jupiter", "Mars", "Venus"], "answer": 1, "explain": "Jupiter is the largest planet in our solar system."}]}',

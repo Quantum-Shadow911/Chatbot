@@ -301,7 +301,7 @@ export function SettingsModal({
             <section aria-labelledby="settings-canvases-label">
               <SectionHeading id="settings-canvases-label">Your canvases</SectionHeading>
               <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                Every quiz, document, interactive page, and animation the AI has
+                Every quiz, document, page, and animation the AI has
                 made in your chats. Click one to open it.
               </p>
               {canvases.length === 0 ? (
