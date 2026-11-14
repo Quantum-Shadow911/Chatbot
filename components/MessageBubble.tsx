@@ -2,7 +2,12 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { Attachment, Message } from "@/lib/types";
-import { splitCanvasSegments, stripCanvasBlocks } from "@/lib/canvas";
+import {
+  splitCanvasSegments,
+  stripCanvasBlocks,
+  withStableId,
+  type CanvasArtifact,
+} from "@/lib/canvas";
 import { formatBytes } from "@/lib/attachments";
 import { formatDate, formatTime } from "@/lib/utils";
 import { CanvasCard, CanvasPendingCard } from "./CanvasCard";
@@ -31,7 +36,7 @@ interface MessageBubbleProps {
   canRegenerate: boolean;
   isSpeaking: boolean;
   onSpeakToggle: (message: Message) => void;
-  onOpenCanvas: (artifact: import("@/lib/canvas").CanvasArtifact) => void;
+  onOpenCanvas: (artifact: CanvasArtifact, streaming?: boolean) => void;
   conversationTitle: string;
   onRegenerate: () => void;
   onEdit: (id: string) => void;
@@ -281,8 +286,27 @@ function MessageBubbleImpl({
                   ) : null
                 ) : segment.kind === "canvas" ? (
                   <CanvasCard key={segmentIndex} artifact={segment.artifact} onOpen={onOpenCanvas} />
+                ) : isStreaming ? (
+                  <CanvasPendingCard
+                    key={segmentIndex}
+                    artifact={segment.artifact}
+                    onOpen={(artifact) => onOpenCanvas(artifact, true)}
+                  />
+                ) : segment.artifact.content.trim() ? (
+                  // Generation finished without a close marker — recover the
+                  // partial canvas instead of showing "Creating…" forever.
+                  <CanvasCard
+                    key={segmentIndex}
+                    artifact={withStableId(segment.artifact)}
+                    onOpen={onOpenCanvas}
+                  />
                 ) : (
-                  <CanvasPendingCard key={segmentIndex} />
+                  <p
+                    key={segmentIndex}
+                    className="text-xs text-slate-500"
+                  >
+                    Canvas wasn’t finished.
+                  </p>
                 )
               )}
             </div>

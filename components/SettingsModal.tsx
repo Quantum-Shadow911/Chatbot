@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  CANVAS_TYPE_LABEL,
+  type CanvasEntry,
+} from "@/lib/canvas";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, type Settings, type ThemeMode } from "@/lib/theme";
 import { trapTabKey } from "@/lib/focusTrap";
 import type { MemoryItem } from "@/lib/memory";
+import { formatDate } from "@/lib/utils";
 import {
   naturalTtsInfo,
   speak,
@@ -13,11 +18,13 @@ import {
 import {
   CheckIcon,
   CloseIcon,
+  FileIcon,
   MonitorIcon,
   MoonIcon,
   SparklesIcon,
   SunIcon,
   TrashIcon,
+  WaveformIcon,
 } from "./icons";
 
 interface MemorySettings {
@@ -39,6 +46,13 @@ interface DataControls {
   conversationCount: number;
 }
 
+interface ActivityStats {
+  chats: number;
+  messages: number;
+  canvases: number;
+  memories: number;
+}
+
 interface SettingsModalProps {
   settings: Settings;
   onThemeChange: (theme: ThemeMode) => void;
@@ -47,17 +61,28 @@ interface SettingsModalProps {
   onNaturalVoiceChange: (voice: string | null) => void;
   memory: MemorySettings;
   dataControls: DataControls;
+  canvases: CanvasEntry[];
+  onOpenCanvas: (artifact: CanvasEntry["artifact"]) => void;
+  activity: ActivityStats;
   onClose: () => void;
 }
 
-type SettingsTab = "general" | "voice" | "memory" | "data";
+type SettingsTab = "general" | "canvases" | "voice" | "memory" | "data";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "general", label: "General" },
+  { id: "canvases", label: "Canvases" },
   { id: "voice", label: "Voice" },
   { id: "memory", label: "Memory" },
   { id: "data", label: "Data controls" },
 ];
+
+const CANVAS_TYPE_ICON = {
+  document: FileIcon,
+  quiz: SparklesIcon,
+  html: SparklesIcon,
+  video: WaveformIcon,
+} as const;
 
 const THEME_OPTIONS: { value: ThemeMode; label: string; Icon: typeof SunIcon }[] = [
   { value: "light", label: "Light", Icon: SunIcon },
@@ -84,6 +109,9 @@ export function SettingsModal({
   onNaturalVoiceChange,
   memory,
   dataControls,
+  canvases,
+  onOpenCanvas,
+  activity,
   onClose,
 }: SettingsModalProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -267,6 +295,66 @@ export function SettingsModal({
                 )}
               </section>
             </>
+          )}
+
+          {tab === "canvases" && (
+            <section aria-labelledby="settings-canvases-label">
+              <SectionHeading id="settings-canvases-label">Your canvases</SectionHeading>
+              <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                Every quiz, document, interactive page, and animation the AI has
+                made in your chats. Click one to open it.
+              </p>
+              {canvases.length === 0 ? (
+                <p className="mt-4 rounded-xl border border-white/10 bg-slate-800/60 px-3 py-4 text-center text-xs text-slate-500">
+                  No canvases yet — ask the AI to make a quiz, a page, or an
+                  animation and it will show up here.
+                </p>
+              ) : (
+                <ul className="mt-4 flex flex-col gap-2">
+                  {canvases.map((entry) => {
+                    const Icon = CANVAS_TYPE_ICON[entry.artifact.type];
+                    return (
+                      <li key={`${entry.conversationId}:${entry.artifact.id}`}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenCanvas(entry.artifact)}
+                          className="group flex w-full items-center gap-3 rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-indigo-400"
+                          aria-label={`Open canvas: ${entry.artifact.title}`}
+                        >
+                          <span
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, var(--accent-soft), var(--accent))",
+                            }}
+                          >
+                            <Icon width={15} height={15} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-slate-100">
+                              {entry.artifact.title}
+                            </span>
+                            <span className="block truncate text-[11px] text-slate-500">
+                              {CANVAS_TYPE_LABEL[entry.artifact.type]} · {entry.conversationTitle} ·{" "}
+                              {formatDate(entry.createdAt)}
+                            </span>
+                          </span>
+                          <span
+                            className="shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-transform group-hover:scale-105"
+                            style={{
+                              borderColor: "var(--accent-border)",
+                              color: "var(--accent-text)",
+                            }}
+                          >
+                            Open
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
           )}
 
           {tab === "voice" && (
@@ -461,6 +549,30 @@ export function SettingsModal({
                 Your conversations and memories are stored only in this browser.
                 Export them as a file, or delete everything.
               </p>
+
+              <div className="mt-4 rounded-xl border border-white/10 bg-slate-800/60 px-3 py-3">
+                <p className="text-xs font-medium text-slate-200">Activity</p>
+                <dl className="mt-2 grid grid-cols-4 gap-2 text-center">
+                  {[
+                    { label: "Chats", value: activity.chats },
+                    { label: "Messages", value: activity.messages },
+                    { label: "Canvases", value: activity.canvases },
+                    { label: "Memories", value: activity.memories },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="rounded-lg border border-white/10 bg-slate-900/60 px-1 py-2"
+                    >
+                      <dt className="text-[10px] uppercase tracking-wide text-slate-500">
+                        {stat.label}
+                      </dt>
+                      <dd className="mt-0.5 text-base font-semibold text-slate-100">
+                        {stat.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
 
               <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-800/60 px-3 py-3">
                 <div className="min-w-0">

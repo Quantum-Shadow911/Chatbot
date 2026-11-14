@@ -63,28 +63,45 @@ export const CanvasCard = memo(function CanvasCard({
   );
 });
 
-export function CanvasPendingCard() {
+interface CanvasPendingCardProps {
+  artifact: CanvasArtifact;
+  onOpen: (artifact: CanvasArtifact) => void;
+}
+
+export function CanvasPendingCard({ artifact, onOpen }: CanvasPendingCardProps) {
+  const Icon = TYPE_ICON[artifact.type];
   return (
-    <div className="mt-1 flex w-full max-w-sm items-center gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3">
+    <button
+      type="button"
+      onClick={() => onOpen(artifact)}
+      className="mt-1 flex w-full max-w-sm cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-slate-800/70 focus-visible:outline-2 focus-visible:outline-indigo-400 active:scale-[0.99]"
+      aria-label={`Open canvas while it is being created: ${artifact.title}`}
+    >
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
         style={{
           background: "linear-gradient(135deg, var(--accent-soft), var(--accent))",
         }}
       >
-        <SparklesIcon width={17} height={17} />
+        <Icon width={17} height={17} />
       </span>
       <span className="min-w-0 flex-1">
         <span
           className="block text-[10px] font-semibold uppercase tracking-wider"
           style={{ color: "var(--accent-text)" }}
         >
-          Canvas
+          {CANVAS_TYPE_LABEL[artifact.type]}
         </span>
-        <span className="shimmer-text block text-sm font-semibold text-slate-300">
-          Creating canvas…
+        <span className="shimmer-text block truncate text-sm font-semibold text-slate-300">
+          Creating {artifact.title}…
         </span>
       </span>
-    </div>
+      <span
+        className="shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold"
+        style={{ borderColor: "var(--accent-border)", color: "var(--accent-text)" }}
+      >
+        Open
+      </span>
+    </button>
   );
 }

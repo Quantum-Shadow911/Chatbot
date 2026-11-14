@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useMemory } from "@/hooks/useMemory";
 import { useSettings } from "@/hooks/useSettings";
 import {
+  collectCanvases,
   findCanvasStream,
   findLastCanvas,
   stripCanvasBlocks,
+  withStableId,
   type CanvasArtifact,
 } from "@/lib/canvas";
 import { printPdf } from "@/lib/pdf";
@@ -158,6 +160,21 @@ export function ChatApp() {
   useEffect(() => {
     if (chat.status === "idle") {
       setCanvasLive(false);
+      // Graceful recovery: generation ended but the canvas block was never
+      // closed — swap the streaming artifact for its finalized partial.
+      const lastMessage = chat.activeConversation?.messages.at(-1);
+      if (
+        canvas &&
+        lastMessage &&
+        lastMessage.role === "assistant" &&
+        !lastMessage.error &&
+        lastMessage.content
+      ) {
+        const stream = findCanvasStream(lastMessage.content);
+        if (stream && !stream.complete && stream.artifact.id === canvas.id) {
+          setCanvas(withStableId(stream.artifact));
+        }
+      }
       return;
     }
     const last = chat.activeConversation?.messages.at(-1);
@@ -175,7 +192,7 @@ export function ChatApp() {
     }
     setCanvasLive(true);
     setCanvas(artifact);
-  }, [chat.status, chat.activeConversation?.messages]);
+  }, [chat.status, chat.activeConversation?.messages, canvas]);
 
   useEffect(() => {
     setCanvas(null);
@@ -184,11 +201,14 @@ export function ChatApp() {
     canvasClosedRef.current = null;
   }, [chat.activeId]);
 
-  const handleOpenCanvas = useCallback((artifact: CanvasArtifact) => {
-    canvasClosedRef.current = null;
-    setCanvasLive(false);
-    setCanvas(artifact);
-  }, []);
+  const handleOpenCanvas = useCallback(
+    (artifact: CanvasArtifact, streaming = false) => {
+      canvasClosedRef.current = null;
+      setCanvasLive(streaming);
+      setCanvas(artifact);
+    },
+    []
+  );
 
   const handleCloseCanvas = useCallback(() => {
     canvasClosedRef.current = canvas?.id ?? null;
@@ -334,7 +354,18 @@ export function ChatApp() {
     setSidebarOpen(false);
   }, [chat.deleteAllConversations]);
 
+  const canvasGallery = useMemo(
+    () => collectCanvases(chat.conversations),
+    [chat.conversations]
+  );
 
+  const handleOpenCanvasFromSettings = useCallback(
+    (artifact: CanvasArtifact) => {
+      setSettingsOpen(false);
+      handleOpenCanvas(artifact);
+    },
+    [handleOpenCanvas]
+  );
 
   const conversation = chat.activeConversation;
   const messages = conversation?.messages ?? [];
@@ -561,6 +592,17 @@ export function ChatApp() {
             onDeleteAll: handleDeleteAll,
             canDeleteAll: !busy && chat.conversations.length > 0,
             conversationCount: chat.conversations.length,
+          }}
+          canvases={canvasGallery}
+          onOpenCanvas={handleOpenCanvasFromSettings}
+          activity={{
+            chats: chat.conversations.length,
+            messages: chat.conversations.reduce(
+              (total, conversation) => total + conversation.messages.length,
+              0
+            ),
+            canvases: canvasGallery.length,
+            memories: memories.length,
           }}
           onClose={() => setSettingsOpen(false)}
         />

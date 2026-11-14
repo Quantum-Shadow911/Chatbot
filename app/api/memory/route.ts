@@ -12,14 +12,27 @@ const MODEL = process.env.MISTRAL_MODEL ?? "mistral-small-latest";
 const MAX_MESSAGES = 20;
 const MAX_MESSAGE_LENGTH = 8_000;
 const MAX_TOTAL_LENGTH = 60_000;
-const MAX_EXTRACTED = 5;
+const MAX_EXTRACTED = 3;
 const MAX_MEMORY_LENGTH = 200;
 
-const EXTRACTION_PROMPT = `You maintain long-term memory for an AI assistant. From the conversation transcript, extract durable facts worth remembering in FUTURE conversations: the user's name, personal details, preferences, ongoing projects, goals, or important context they shared.
+const EXTRACTION_PROMPT = `You maintain long-term memory for an AI assistant. From the conversation transcript, extract ONLY the most important durable facts worth remembering in FUTURE conversations.
+
+Remember ONLY:
+- The user's name or personal details they share about themselves.
+- Stable preferences that should shape future replies (e.g. "prefers Python", "is vegetarian").
+- Ongoing projects or goals that span multiple conversations.
+- Information the user explicitly asks to remember.
+
+Do NOT remember:
+- Small talk, greetings, jokes, or casual chat.
+- One-off questions, homework answers, code written for them, or facts looked up during this conversation only.
+- Anything that only matters right now and would be useless in a week.
+- Anything already listed under "Known memories".
+
+When in doubt, leave it out — an empty list is far better than a cluttered one. Most conversations should produce 0 or 1 memories.
 
 Rules:
 - Write each memory as one short third-person statement (e.g. "The user's name is Alex", "The user is building a game in Python").
-- Only durable information. Ignore small talk, temporary questions, and anything already listed under "Known memories".
 - Maximum ${MAX_EXTRACTED} memories. Respond with ONLY a JSON array of strings. If nothing is worth remembering, respond with [].`;
 
 interface IncomingMessage {
