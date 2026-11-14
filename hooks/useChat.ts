@@ -25,6 +25,7 @@ interface UseChatOptions {
   getMemories?: () => string[];
   getModel?: () => string | null;
   getMode?: () => string | null;
+  getMode2?: () => string | null;
   getLive?: () => boolean;
   onMemoriesExtracted?: (facts: string[]) => void;
 }
@@ -386,6 +387,7 @@ export function useChat(options: UseChatOptions = {}) {
             memories: optionsRef.current.getMemories?.() ?? [],
             model: optionsRef.current.getModel?.() ?? null,
             mode: optionsRef.current.getMode?.() ?? null,
+            mode2: optionsRef.current.getMode2?.() ?? null,
             live: optionsRef.current.getLive?.() ?? false,
           }),
           signal: controller.signal,

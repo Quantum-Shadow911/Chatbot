@@ -52,7 +52,18 @@ export function useSettings() {
   }, []);
 
   const setChatMode = useCallback((mode: string | null) => {
-    setSettings((current) => ({ ...current, mode }));
+    setSettings((current) => ({
+      ...current,
+      mode,
+      mode2: current.mode2 && current.mode2 === mode ? null : current.mode2,
+    }));
+  }, []);
+
+  const setChatMode2 = useCallback((mode2: string | null) => {
+    setSettings((current) => ({
+      ...current,
+      mode2: mode2 && mode2 !== current.mode ? mode2 : null,
+    }));
   }, []);
 
   return {
@@ -65,5 +76,6 @@ export function useSettings() {
     setReadAloud,
     setNaturalVoice,
     setChatMode,
+    setChatMode2,
   };
 }

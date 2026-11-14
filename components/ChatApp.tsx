@@ -69,6 +69,7 @@ export function ChatApp() {
     setReadAloud,
     setNaturalVoice,
     setChatMode,
+    setChatMode2,
   } = useSettings();
   const memoryRef = useRef(memories);
   memoryRef.current = memories;
@@ -138,6 +139,7 @@ export function ChatApp() {
     getMemories: () => (memoryEnabled ? memoryRef.current.map((m) => m.text) : []),
     getModel: () => settings.model,
     getMode: () => settings.mode,
+    getMode2: () => settings.mode2,
     getLive: () => liveOpenRef.current,
     onMemoriesExtracted: handleMemoriesExtracted,
   });
@@ -479,7 +481,12 @@ export function ChatApp() {
           <h1 className="min-w-0 truncate text-sm font-semibold text-slate-200">
             {conversation ? conversation.title : "AI Chatbot"}
           </h1>
-          <ModePicker selected={settings.mode} onSelect={setChatMode} />
+          <ModePicker
+            selected={settings.mode}
+            onSelect={setChatMode}
+            secondary={settings.mode2}
+            onSelectSecondary={setChatMode2}
+          />
           {models.length > 1 && currentModel && (
             <ModelPicker
               models={models}
