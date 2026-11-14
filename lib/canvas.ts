@@ -28,9 +28,9 @@ const FENCE_PATTERN = /```[a-zA-Z0-9_-]*[ \t]*\n([\s\S]*?)```/g;
 
 export const CANVAS_TYPE_LABEL: Record<CanvasType, string> = {
   document: "Document",
-  quiz: "Interactive quiz",
-  html: "Interactive page",
-  video: "Animated video",
+  quiz: "Quiz",
+  html: "Page",
+  video: "Video",
 };
 
 export function hashText(text: string): string {
@@ -294,6 +294,25 @@ function pendingArtifactFrom(text: string): PendingParse | null {
       content: partial.trim(),
     },
   };
+}
+
+const INTERACTIVE_PHRASE_PATTERN = /\binteractive\s+(quizzes|quiz|pages|page)\b/gi;
+const AN_INTERACTIVE_PHRASE_PATTERN = /\ban\s+interactive\s+(quizzes|quiz|pages|page)\b/gi;
+
+/** Hide the phrase "interactive quiz/page" if the model writes it in prose. */
+export function friendlyCanvasPhrasing(text: string): string {
+  return text
+    .replace(
+      AN_INTERACTIVE_PHRASE_PATTERN,
+      (_match, word: string) => {
+        const w = word.toLowerCase();
+        return w === "quizzes" || w === "pages" ? `the ${w}` : `a ${w}`;
+      }
+    )
+    .replace(
+      INTERACTIVE_PHRASE_PATTERN,
+      (_match, word: string) => word.toLowerCase()
+    );
 }
 
 export function withStableId(artifact: CanvasArtifact): CanvasArtifact {

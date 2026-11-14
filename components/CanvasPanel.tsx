@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CANVAS_TYPE_LABEL,
   canvasDownload,
   parseQuiz,
   type CanvasArtifact,
@@ -109,14 +108,6 @@ export function CanvasPanel({ artifact, streaming = false, onClose }: CanvasPane
       >
         <header className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
           <div className="min-w-0 flex-1">
-            {!streaming && (
-              <p
-                className="text-[10px] font-semibold uppercase tracking-wider"
-                style={{ color: "var(--accent-text)" }}
-              >
-                {CANVAS_TYPE_LABEL[artifact.type]}
-              </p>
-            )}
             <h2 className="truncate text-sm font-bold text-slate-100">{artifact.title}</h2>
           </div>
           {isWeb && (
