@@ -134,6 +134,7 @@ export type CanvasSegment =
   | { kind: "canvas-pending"; artifact: CanvasArtifact };
 
 export function splitCanvasSegments(content: string): CanvasSegment[] {
+  content = normalizePlaceholderBlocks(content);
   const segments: CanvasSegment[] = [];
   let last = 0;
   BLOCK_PATTERN.lastIndex = 0;
@@ -175,6 +176,7 @@ export function splitCanvasSegments(content: string): CanvasSegment[] {
 export function stripCanvasBlocks(text: string): string {
   return text
     .replace(BLOCK_PATTERN, "")
+    .replace(PLACEHOLDER_BLOCK_PATTERN, "")
     .replace(/<<<\s*CANVAS[\s\S]*$/i, "")
     .trim();
 }
@@ -213,6 +215,32 @@ const TYPE_ONLY_PATTERN = /<<<\s*CANVAS\s*[:\-\s]*\s*(document|quiz|html|video)/
 
 const TRAILING_CLOSE_PATTERN = /<<<\s*END[\s_-]?CANVAS\s*>*>?\s*$/i;
 
+// Some models copy the prompt template literally and emit `<<<CANVAS type |
+// Title>>>` instead of a real type. Recover these by inferring the type from
+// the block's content.
+const PLACEHOLDER_BLOCK_PATTERN =
+  /<<<\s*CANVAS\s+type\s*\|\s*([^\n]{1,120}?)\s*>>>\n?([\s\S]*?)<<<\s*END[\s_-]?CANVAS\s*>>>/gi;
+
+const PLACEHOLDER_HEADER_PATTERN = /<<<\s*CANVAS\s+type\s*\|\s*([^\n]{0,120}?)$/i;
+
+function inferCanvasType(content: string): CanvasType {
+  const trimmed = content.trim();
+  // Canvas JSON content is always a quiz, even while partially streamed.
+  if (trimmed.startsWith("{")) return "quiz";
+  if (parseQuiz(trimmed)) return "quiz";
+  if (/<(!doctype|html|style|script|canvas|body|div)[\s>]/i.test(trimmed)) return "html";
+  return "document";
+}
+
+function normalizePlaceholderBlocks(content: string): string {
+  if (!/<<<\s*CANVAS\s+type\s*\|/i.test(content)) return content;
+  return content.replace(
+    PLACEHOLDER_BLOCK_PATTERN,
+    (_match, title: string, body: string) =>
+      `<<<CANVAS ${inferCanvasType(body)} | ${title.trim()}>>>${body}<<<END-CANVAS>>>`
+  );
+}
+
 interface PendingParse {
   index: number;
   artifact: CanvasArtifact;
@@ -228,17 +256,6 @@ function pendingArtifactFrom(text: string): PendingParse | null {
     closeIdx === -1 ? afterOpen.split("\n")[0] : afterOpen.slice(0, closeIdx)
   ).trim();
   const headerMatch = HEADER_PATTERN.exec(header);
-  let type: CanvasType;
-  let title: string;
-  if (headerMatch) {
-    type = headerMatch[1].toLowerCase() as CanvasType;
-    title = (headerMatch[2] ?? "").trim() || CANVAS_TYPE_LABEL[type];
-  } else {
-    const typeMatch = TYPE_ONLY_PATTERN.exec(header);
-    if (!typeMatch) return null;
-    type = typeMatch[1].toLowerCase() as CanvasType;
-    title = CANVAS_TYPE_LABEL[type];
-  }
   let partial = "";
   if (closeIdx !== -1) {
     // Canvas content always starts on its own line. Text on the same line as
@@ -246,6 +263,24 @@ function pendingArtifactFrom(text: string): PendingParse | null {
     const raw = afterOpen.slice(closeIdx + 3);
     if (raw === "" || /^\s*\n/.test(raw) || raw.trim() === "") {
       partial = raw.replace(/^\s*\n/, "").replace(TRAILING_CLOSE_PATTERN, "");
+    } else {
+      return null;
+    }
+  }
+  let type: CanvasType;
+  let title: string;
+  if (headerMatch) {
+    type = headerMatch[1].toLowerCase() as CanvasType;
+    title = (headerMatch[2] ?? "").trim() || CANVAS_TYPE_LABEL[type];
+  } else {
+    const typeMatch = TYPE_ONLY_PATTERN.exec(header);
+    const placeholderMatch = PLACEHOLDER_HEADER_PATTERN.exec(header);
+    if (typeMatch) {
+      type = typeMatch[1].toLowerCase() as CanvasType;
+      title = CANVAS_TYPE_LABEL[type];
+    } else if (placeholderMatch) {
+      type = inferCanvasType(partial);
+      title = placeholderMatch[1].trim() || CANVAS_TYPE_LABEL[type];
     } else {
       return null;
     }

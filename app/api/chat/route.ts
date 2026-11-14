@@ -44,10 +44,10 @@ const BASE_SYSTEM_PROMPT =
 const CANVAS_PROMPT = [
   "You can create rich canvases: interactive artifacts that open in a side panel next to the chat.",
   "To create one, output a block EXACTLY in this format, as plain text in your reply (never inside code fences):",
-  "<<<CANVAS type | Title>>>",
+  "<<<CANVAS quiz | Title>>>",
   "...content...",
   "<<<END-CANVAS>>>",
-  "The opening marker and closing marker each go on their own line. Types (always lowercase):",
+  "In the opening marker, replace quiz with the actual type you are creating (one of: quiz, html, video, document — always lowercase) and Title with a short name. NEVER write the word \"type\" itself in the marker — it is a placeholder, not a valid type. The opening marker and closing marker each go on their own line. Types:",
   '- "quiz" — content must be ONLY valid JSON, no code fences, in this shape: {"title": "...", "questions": [{"question": "...", "choices": ["...", "...", "...", "..."], "answer": 0, "explain": "brief why"}]}. "answer" is the 0-based index of the correct choice. Use 3-10 questions with exactly 4 choices each.',
   '- "html" — one complete, self-contained HTML page with inline <style> and <script>, no external requests, polished dark design. Use for interactive demos, simulations, tools, posters, and small games.',
   '- "video" — one self-contained HTML page that plays like a short animated video: an animated scene built with CSS animations and/or <canvas> JavaScript that starts automatically and loops or tells a small visual story. No sound, no external requests.',
