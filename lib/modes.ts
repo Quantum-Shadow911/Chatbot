@@ -33,6 +33,13 @@ export const MODES: Mode[] = [
       "Provide deep, thorough, well-structured answers. Organize with headings and bullet points, cover relevant context, trade-offs, and nuances, compare alternatives where useful, and explicitly note when information may be uncertain, contested, or outdated.",
   },
   {
+    id: "image",
+    label: "Image",
+    description: "Generates an AI image from your prompt",
+    category: "specialty",
+    prompt: "",
+  },
+  {
     id: "cooking",
     label: "Cooking",
     description: "Recipes, techniques, and meal help",
@@ -74,7 +81,7 @@ export const MODES: Mode[] = [
   },
 ];
 
-const MODE_PATTERN = new RegExp(`^(${MODES.map((m) => m.id).join("|")})$`);
+const MODE_PATTERN = new RegExp("^(\b?" + MODES.map((m) => m.id).join("|") + ")$");
 
 export function isModeId(value: unknown): value is string {
   return typeof value === "string" && MODE_PATTERN.test(value);
